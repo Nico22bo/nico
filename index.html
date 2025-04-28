@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FullCalendar CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet">
     <style>
         .card-metric {
             text-align: center;
@@ -95,140 +97,94 @@
         </div>
     </div>
 
-    <!-- Taula de Vacances -->
+    <!-- Calendari de Vacances -->
     <div class="card mb-4">
-        <div class="card-header">Vacances Sol·licitades</div>
+        <div class="card-header">Calendari de Vacances</div>
         <div class="card-body">
-            <table class="table table-striped" id="taula-vacances">
-                <thead>
-                    <tr>
-                        <th>Empleat</th>
-                        <th>Inici</th>
-                        <th>Fi</th>
-                        <th>Accions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Files dinàmiques -->
-                </tbody>
-            </table>
+            <div id="calendari"></div>
         </div>
     </div>
 
-    <!-- Estat dels Empleats -->
-    <div class="card">
-        <div class="card-header">Estat dels Empleats</div>
-        <div class="card-body" id="llista-estats">
-            <!-- Estats dinàmics -->
-        </div>
-    </div>
 </div>
 
-<!-- Bootstrap JS Bundle -->
+<!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js"></script>
 
-<!-- Script per gestionar vacances -->
 <script>
-    const formulari = document.getElementById('formulari-vacances');
-    const taula = document.getElementById('taula-vacances').querySelector('tbody');
-    const alertaOficina = document.getElementById('alerta-oficina');
-    const llistaEstats = document.getElementById('llista-estats');
+    document.addEventListener('DOMContentLoaded', function() {
 
-    const totalEmpleatsDiv = document.getElementById('total-empleats');
-    const aOficinaDiv = document.getElementById('a-oficina');
-    const deVacancesDiv = document.getElementById('de-vacances');
+        const formulari = document.getElementById('formulari-vacances');
+        const totalEmpleatsDiv = document.getElementById('total-empleats');
+        const aOficinaDiv = document.getElementById('a-oficina');
+        const deVacancesDiv = document.getElementById('de-vacances');
+        const alertaOficina = document.getElementById('alerta-oficina');
 
-    let empleats = ['DAVID', 'NÚRIA', 'MÒNICA', 'THAÏS', 'ISABEL', 'NICOLÁS'];
-    let vacances = [];
+        let empleats = ['DAVID', 'NÚRIA', 'MÒNICA', 'THAÏS', 'ISABEL', 'NICOLÁS'];
+        let vacances = [];
 
-    formulari.addEventListener('submit', function(event) {
-        event.preventDefault();
-        const empleat = document.getElementById('empleat').value;
-        const dataInici = document.getElementById('dataInici').value;
-        const dataFi = document.getElementById('dataFi').value;
-
-        if (!empleat || !dataInici || !dataFi) {
-            alert("Tots els camps són obligatoris");
-            return;
-        }
-
-        const inici = new Date(dataInici);
-        const fi = new Date(dataFi);
-
-        if (inici > fi) {
-            alert("La data d'inici ha de ser anterior o igual a la data de fi.");
-            return;
-        }
-
-        vacances.push({ empleat, dataInici, dataFi });
-        actualitzarVista();
-        formulari.reset();
-    });
-
-    function actualitzarVista() {
-        actualitzarTaula();
-        actualitzarDashboard();
-        actualitzarEstats();
-        comprovarOficina();
-    }
-
-    function actualitzarTaula() {
-        taula.innerHTML = '';
-        vacances.forEach((vacacio, index) => {
-            const fila = document.createElement('tr');
-            fila.innerHTML = `
-                <td>${vacacio.empleat}</td>
-                <td>${vacacio.dataInici}</td>
-                <td>${vacacio.dataFi}</td>
-                <td>
-                    <button class="btn btn-danger btn-sm" onclick="eliminarVacacio(${index})">Eliminar</button>
-                </td>
-            `;
-            taula.appendChild(fila);
-        });
-    }
-
-    function eliminarVacacio(index) {
-        vacances.splice(index, 1);
-        actualitzarVista();
-    }
-
-    function actualitzarDashboard() {
         totalEmpleatsDiv.textContent = empleats.length;
-        const empleatsEnVacances = vacances.map(v => v.empleat);
-        const empleatsAOficina = empleats.filter(e => !empleatsEnVacances.includes(e));
 
-        aOficinaDiv.textContent = empleatsAOficina.length;
-        deVacancesDiv.textContent = empleatsEnVacances.length;
-    }
-
-    function actualitzarEstats() {
-        llistaEstats.innerHTML = '';
-        empleats.forEach(empleat => {
-            const enVacances = vacances.some(v => v.empleat === empleat);
-            const estatDiv = document.createElement('div');
-            estatDiv.className = 'my-2';
-            estatDiv.innerHTML = `
-                <span class="estat ${enVacances ? 'estat-vacances' : 'estat-oficina'}">
-                    ${empleat} - ${enVacances ? 'De vacances' : 'A l'oficina'}
-                </span>
-            `;
-            llistaEstats.appendChild(estatDiv);
+        // Inicialitzar el calendari
+        const calendariEl = document.getElementById('calendari');
+        const calendari = new FullCalendar.Calendar(calendariEl, {
+            initialView: 'dayGridMonth',
+            locale: 'ca',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,listWeek'
+            },
+            events: []
         });
-    }
 
-    function comprovarOficina() {
-        const empleatsEnVacances = vacances.map(v => v.empleat);
-        const empleatsAOficina = empleats.filter(e => !empleatsEnVacances.includes(e));
-        if (empleatsAOficina.length === 0) {
-            alertaOficina.classList.remove('d-none');
-        } else {
-            alertaOficina.classList.add('d-none');
+        calendari.render();
+
+        formulari.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const empleat = document.getElementById('empleat').value;
+            const dataInici = document.getElementById('dataInici').value;
+            const dataFi = document.getElementById('dataFi').value;
+
+            if (!empleat || !dataInici || !dataFi) {
+                alert("Tots els camps són obligatoris");
+                return;
+            }
+
+            const inici = new Date(dataInici);
+            const fi = new Date(dataFi);
+
+            if (inici > fi) {
+                alert("La data d'inici ha de ser anterior o igual a la data de fi.");
+                return;
+            }
+
+            vacances.push({ empleat, dataInici, dataFi });
+            calendari.addEvent({
+                title: empleat + ' (vacances)',
+                start: dataInici,
+                end: new Date(new Date(dataFi).getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                allDay: true
+            });
+
+            actualitzarDashboard();
+            formulari.reset();
+        });
+
+        function actualitzarDashboard() {
+            const empleatsEnVacances = vacances.map(v => v.empleat);
+            const empleatsAOficina = empleats.filter(e => !empleatsEnVacances.includes(e));
+
+            aOficinaDiv.textContent = empleatsAOficina.length;
+            deVacancesDiv.textContent = empleatsEnVacances.length;
+
+            if (empleatsAOficina.length === 0) {
+                alertaOficina.classList.remove('d-none');
+            } else {
+                alertaOficina.classList.add('d-none');
+            }
         }
-    }
-
-    // Inicialitzar vista
-    actualitzarVista();
+    });
 </script>
 </body>
 </html>
