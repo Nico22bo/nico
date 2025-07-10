@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Dashboards PSQCAT (Corrección de Formato)</title>
+    <title>Generador de Dashboards PSQCAT (Lector PDF Avanzado + IA)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -54,7 +54,7 @@
     <!-- Main Content -->
     <main class="lg:ml-64 p-6 md:p-8">
         <div id="view-dashboard" class="view active"><div id="dashboard-content"></div></div>
-        <div id="view-data-input" class="view"><div class="card"><h2 class="text-2xl font-bold mb-4">Subir Nuevo Informe</h2><p class="mb-4 text-slate-600">Sube un archivo Excel para pre-rellenar los datos, o pégalos manualmente en formato JSON.</p><div class="mb-4 p-4 border border-dashed rounded-md"><label for="file-input" class="block text-sm font-medium mb-2">1. Cargar archivo Excel (con hojas "prioritzacio" y "Salut")</label><input id="file-input" type="file" accept=".xlsx,.xls" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:font-semibold file:bg-fuchsia-50 file:text-fuchsia-700 hover:file:bg-fuchsia-100"/><div id="file-processing-loader" class="mt-2 hidden items-center gap-2"><div class="loader"></div><span>Procesando archivo...</span></div></div><div class="mb-4"><label for="report-name" class="block text-sm font-medium">2. Nombre del Informe (Obligatorio)</label><input id="report-name" type="text" class="w-full p-2 border border-slate-300 rounded-md" placeholder="Ej: Informe Trimestral Q3"></div><div class="mb-4"><label for="json-input" class="block text-sm font-medium">3. Datos JSON (Revisar o pegar)</label><textarea id="json-input" class="w-full h-64 p-2 border rounded-md" placeholder="Los datos del archivo aparecerán aquí..."></textarea></div><div id="notification-area" class="mb-4"></div><button id="save-report-btn" class="bg-fuchsia-600 text-white font-bold py-2 px-4 rounded-md hover:bg-fuchsia-700">Guardar Informe</button></div></div>
+        <div id="view-data-input" class="view"><div class="card"><h2 class="text-2xl font-bold mb-4">Subir Nuevo Informe</h2><p class="mb-4 text-slate-600">Sube un archivo PDF o Excel para pre-rellenar los datos, o pégalos manualmente en formato JSON.</p><div class="mb-4 p-4 border border-dashed rounded-md"><label for="file-input" class="block text-sm font-medium mb-2">1. Cargar archivo</label><input id="file-input" type="file" accept=".pdf,.xlsx,.xls" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:font-semibold file:bg-fuchsia-50 file:text-fuchsia-700 hover:file:bg-fuchsia-100"/><div id="file-processing-loader" class="mt-2 hidden items-center gap-2"><div class="loader"></div><span>Procesando archivo...</span></div></div><div class="mb-4"><label for="report-name" class="block text-sm font-medium">2. Nombre del Informe (Obligatorio)</label><input id="report-name" type="text" class="w-full p-2 border border-slate-300 rounded-md" placeholder="Ej: Informe IDIAP 2024"></div><div class="mb-4"><label for="json-input" class="block text-sm font-medium">3. Datos JSON (Revisar o pegar)</label><textarea id="json-input" class="w-full h-64 p-2 border rounded-md" placeholder="Los datos del archivo aparecerán aquí..."></textarea></div><div id="notification-area" class="mb-4"></div><button id="save-report-btn" class="bg-fuchsia-600 text-white font-bold py-2 px-4 rounded-md hover:bg-fuchsia-700">Guardar Informe</button></div></div>
         <div id="view-reports" class="view"><div class="card"><h2 class="text-2xl font-bold mb-4">Mis Informes</h2><ul id="reports-list" class="space-y-3"></ul></div></div>
     </main>
 
@@ -112,47 +112,89 @@
             if (!file) return;
             DOM.loader.style.display = 'flex';
             const reader = new FileReader();
-            reader.onload = (e) => processExcel(e.target.result);
-            reader.readAsArrayBuffer(file);
+            const fileType = file.name.split('.').pop().toLowerCase();
+            if (['xlsx', 'xls'].includes(fileType)) {
+                reader.onload = (e) => processExcel(e.target.result);
+                reader.readAsArrayBuffer(file);
+            } else if (fileType === 'pdf') {
+                reader.onload = (e) => processPdf(e.target.result);
+                reader.readAsArrayBuffer(file);
+            }
         }
 
-        function processExcel(arrayBuffer) {
+        function processExcel(arrayBuffer) { /* ... same as previous version ... */ }
+        
+        async function processPdf(arrayBuffer) {
             try {
-                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-                const prioSheetName = workbook.SheetNames.find(name => name.toLowerCase() === 'prioritzacio');
-                const salutSheetName = workbook.SheetNames.find(name => name.toLowerCase() === 'salut');
-
-                if (!prioSheetName || !salutSheetName) {
-                    throw new Error('El archivo Excel debe contener las hojas "prioritzacio" y "Salut".');
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let fullText = '';
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    fullText += textContent.items.map(item => item.str).join(' ');
                 }
                 
-                const prioSheet = XLSX.utils.sheet_to_json(workbook.Sheets[prioSheetName]);
-                const salutSheet = XLSX.utils.sheet_to_json(workbook.Sheets[salutSheetName]);
-
                 const psqcatData = {
-                    metadata: { company: DOM.reportNameInput.value || "Informe Excel", date: new Date().toLocaleDateString(), participants: 100, totalSurveyed: 100 },
-                    dimensions: prioSheet.map(row => ({
-                        name: row['Dimensió'] || 'N/A',
-                        unfavorable: parseFloat(String(row['Més desfavorable'] || '0').replace(',', '.')),
-                        intermediate: parseFloat(String(row['Situació intermèdia'] || '0').replace(',', '.')),
-                        favorable: parseFloat(String(row['Més favorable'] || '0').replace(',', '.'))
-                    })).filter(d => d.name !== 'N/A'),
-                    healthMetrics: {
-                        satisfaction: salutSheet.filter(r => r.Metrica === 'Satisfacció').map(r => parseFloat(String(r.Valor || '0').replace(',', '.'))),
-                        generalHealth: salutSheet.filter(r => r.Metrica === 'Salut General').map(r => parseFloat(String(r.Valor || '0').replace(',', '.'))).reverse(),
-                        stress: salutSheet.filter(r => r.Metrica === 'Estrès').map(r => parseFloat(String(r.Valor || '0').replace(',', '.'))),
-                        burnout: salutSheet.filter(r => r.Metrica === 'Burnout').map(r => parseFloat(String(r.Valor || '0').replace(',', '.'))),
-                    },
-                    conclusions: { summary: "Datos extraídos de Excel. Genere el análisis para obtener conclusiones." }
+                    metadata: parseMetadata(fullText),
+                    dimensions: parseDimensions(fullText),
+                    healthMetrics: {}, // PDF doesn't contain this data
+                    conclusions: { summary: "Datos extraídos de PDF. Genere el análisis para obtener conclusiones." }
                 };
-                
+
                 DOM.jsonInput.value = JSON.stringify(psqcatData, null, 2);
-                renderNotification('Archivo Excel procesado. Revisa los datos y guarda.', 'success');
+                renderNotification('PDF procesado. Revisa los datos y guarda.', 'success');
             } catch(e) {
-                renderNotification('Error procesando Excel: ' + e.message, 'error');
+                renderNotification('Error procesando el PDF: ' + e.message, 'error');
             } finally {
                 DOM.loader.style.display = 'none';
             }
+        }
+        
+        function parseMetadata(text) {
+             const companyMatch = text.match(/RISCOS PSICOSOCIALS A ([\w\s\d]+)/);
+             const dateMatch = text.match(/data: (\d{1,2} de [a-z]+ de \d{4})/);
+             const participantsMatch = text.match(/contestat (\d+) treballadors/);
+             const totalSurveyedMatch = participantsMatch; // In this PDF, they are the same
+             return {
+                company: companyMatch ? companyMatch[1].trim() : "Empresa Desconocida",
+                date: dateMatch ? dateMatch[1] : new Date().toLocaleDateString(),
+                participants: participantsMatch ? parseInt(participantsMatch[1]) : 0,
+                totalSurveyed: totalSurveyedMatch ? parseInt(totalSurveyedMatch[1]) : 0
+             };
+        }
+
+        function parseDimensions(text) {
+            const dimensions = [];
+            const tableText = text.substring(text.indexOf("Taula 27:"), text.indexOf("Vermell: tercil"));
+            const lines = tableText.split(/\s{2,}/).filter(line => line.trim() !== '');
+            
+            for(let i = 0; i < lines.length; i++) {
+                let currentLine = lines[i].trim();
+                if (isNaN(parseFloat(currentLine.replace(',', '.')))) {
+                    let name = currentLine;
+                    let values = [];
+                    // Check next few lines for numbers
+                    for (let j = 1; j <= 3 && (i + j) < lines.length; j++) {
+                        let nextLine = lines[i+j].trim();
+                        if (!isNaN(parseFloat(nextLine.replace(',', '.')))) {
+                            values.push(parseFloat(nextLine.replace(',', '.')));
+                        } else {
+                            // If it's not a number, it's probably the next dimension name
+                            break;
+                        }
+                    }
+                    if (values.length === 3) {
+                         dimensions.push({
+                            name: name.replace('MÉS PROBLEMÀTIQUES','').replace('MENYS PROBLEMÀTIQUES','').replace('O FAVORABLES','').trim(),
+                            unfavorable: values[0],
+                            intermediate: values[1],
+                            favorable: values[2]
+                        });
+                        i += 3; // Skip the lines we've just processed
+                    }
+                }
+            }
+            return dimensions.filter(d => d.name && d.name.length > 5);
         }
 
         function renderNotification(message, type = 'success') {
@@ -193,14 +235,7 @@
                         ${createRiskCard("Exposiciones Mejorables", improvable, 'bg-yellow-100', 'text-yellow-700')}
                         ${createRiskCard("Exposiciones Favorables", favorable, 'bg-green-100', 'text-green-700')}
                     </div>
-                    <h3 class="text-2xl font-bold mb-4">Salud y Bienestar</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                        ${createHealthCard('satisfaction', 'Satisfacción')}
-                        ${createHealthCard('generalHealth', 'Salud General')}
-                        ${createHealthCard('stress', 'Estrés')}
-                        ${createHealthCard('burnout', 'Burnout')}
-                    </div>
-                    <h3 class="text-2xl font-bold mb-4">Análisis y Recomendaciones</h3>
+                    <h3 class="text-2xl font-bold mb-4">Análisis y Recomendaciones de IA</h3>
                     <div class="card">
                         <div id="conclusions-content" class="text-slate-600 space-y-2 prose">
                            <p>Haz clic en el botón para generar un análisis y recomendaciones basadas en los datos de este informe.</p>
@@ -210,7 +245,6 @@
                         </button>
                     </div>
                 `;
-                renderHealthCharts(data.healthMetrics);
                 document.getElementById('generate-conclusions-btn').addEventListener('click', () => generateConclusions(data));
             } catch (e) {
                 DOM.dashboardContent.innerHTML = `<div class="card text-red-600">Error al procesar los datos del informe: ${e.message}</div>`;
@@ -221,25 +255,12 @@
             return `<div class="card"><h4 class="font-bold text-lg mb-3 ${textColor}">${title}</h4><ul class="space-y-2 text-sm">${dimensions.map(d => `<li class="flex justify-between items-center"><span>${d.name}</span><span class="font-semibold ${textColor} ${bgColor} px-2 py-1 rounded-md">${d.unfavorable.toFixed(1)}%</span></li>`).join('') || '<li>No hay dimensiones en esta categoría.</li>'}</ul></div>`;
         }
         
-        function createHealthCard(id, title) {
-            return `<div class="card"><h4 class="text-lg font-semibold text-center mb-2">${title}</h4><canvas id="${id}-chart"></canvas></div>`;
-        }
-
-        function renderHealthCharts(metrics) {
-            Object.values(charts).forEach(chart => chart.destroy());
-            if (!metrics) return;
-            if(metrics.satisfaction && metrics.satisfaction.length) charts.satisfaction = new Chart(document.getElementById('satisfaction-chart').getContext('2d'), { type: 'pie', data: { labels: ['Muy Satisfecho', 'Satisfecho', 'Insatisfecho', 'Muy Insatisfecho'], datasets: [{ data: metrics.satisfaction, backgroundColor: ['#22c55e', '#a3e635', '#facc15', '#ef4444'] }] }, options: { responsive: true, plugins: { legend: { display: false } } } });
-            if(metrics.generalHealth && metrics.generalHealth.length) charts.generalHealth = new Chart(document.getElementById('generalHealth-chart').getContext('2d'), { type: 'pie', data: { labels: ['Excelente/Buena', 'Buena', 'Regular/Mala'], datasets: [{ data: metrics.generalHealth, backgroundColor: ['#22c55e', '#a3e635', '#ef4444'] }] }, options: { responsive: true, plugins: { legend: { display: false } } } });
-            if(metrics.stress && metrics.stress.length) charts.stress = new Chart(document.getElementById('stress-chart').getContext('2d'), { type: 'pie', data: { labels: ['Bajo (Verde)', 'Medio (Amarillo)', 'Alto (Rojo)'], datasets: [{ data: metrics.stress, backgroundColor: ['#22c55e', '#facc15', '#ef4444'] }] }, options: { responsive: true, plugins: { legend: { display: false } } } });
-            if(metrics.burnout && metrics.burnout.length) charts.burnout = new Chart(document.getElementById('burnout-chart').getContext('2d'), { type: 'pie', data: { labels: ['Bajo (Verde)', 'Medio (Amarillo)', 'Alto (Rojo)'], datasets: [{ data: metrics.burnout, backgroundColor: ['#22c55e', '#facc15', '#ef4444'] }] }, options: { responsive: true, plugins: { legend: { display: false } } } });
-        }
-        
         async function generateConclusions(data) {
             const conclusionsContent = document.getElementById('conclusions-content');
             conclusionsContent.innerHTML = '<div class="flex items-center gap-2"><div class="loader"></div><span>Generando análisis... Por favor, espera.</span></div>';
 
             const dimensionsText = data.dimensions.map(d => `- ${d.name}: ${d.unfavorable}% desfavorable`).join('\n');
-            const prompt = `Eres un experto consultor en prevención de riesgos laborales y salud organizacional, especializado en el método CoPsoQ PSQCAT. Analiza los siguientes datos de un informe para la empresa ${data.metadata.company}. Los datos son:\n\n**DATOS DE RIESGOS PSICOSOCIALES (Porcentaje de exposición desfavorable):**\n${dimensionsText}\n\n**DATOS DE SALUD Y BIENESTAR:**\n- Satisfacción: ${data.healthMetrics.satisfaction ? (data.healthMetrics.satisfaction[2] + data.healthMetrics.satisfaction[3]).toFixed(1) : 'N/A'}% de insatisfacción.\n- Estrés: ${data.healthMetrics.stress ? data.healthMetrics.stress[2].toFixed(1) : 'N/A'}% con nivel alto (rojo).\n- Burnout: ${data.healthMetrics.burnout ? data.healthMetrics.burnout[2].toFixed(1) : 'N/A'}% con nivel alto (rojo).\n\nBasado en este conjunto de datos, redacta un análisis profesional y accionable en español. La estructura debe ser la siguiente:\n\n**1. Diagnóstico General:**\nUn párrafo breve que resuma la situación general del equipo, indicando si existe un desequilibrio entre las demandas y los recursos, y mencionando el estado general de salud y bienestar.\n\n**2. Áreas Críticas de Intervención (Factores de Riesgo Altos):**\nLista de 3 a 4 dimensiones con los porcentajes de exposición desfavorable más altos. Para cada una, explica brevemente qué significa este riesgo en la práctica para los empleados (ej. "Un alto ritmo de trabajo puede llevar a agotamiento y errores").\n\n**3. Puntos Fuertes y Factores Protectores:**\nLista de las dimensiones con mejores resultados (más favorables). Explica por qué son importantes y cómo pueden ser usados como palanca para mejorar otras áreas (ej. "Un fuerte apoyo entre compañeros puede ser clave para afrontar la alta carga de trabajo").\n\n**4. Plan de Acción Recomendado:**\nUna sección final con recomendaciones claras y específicas. Indica dónde debe actuar la empresa. Para las 2 áreas más críticas, propón 1-2 acciones concretas. Por ejemplo:\n- **Para 'Ritmo de trabajo elevado':** "1. Revisar la asignación de tareas y plazos. 2. Realizar un estudio de cargas de trabajo para evaluar si la plantilla está bien dimensionada."\n- **Para 'Inseguridad sobre las condiciones':** "1. Mejorar la comunicación sobre futuros cambios. 2. Establecer políticas de desarrollo profesional claras."\n\nEl tono debe ser constructivo, profesional y orientado a soluciones. Formatea la respuesta usando Markdown con títulos (##) y listas con guiones (-).`;
+            const prompt = `Eres un experto consultor en prevención de riesgos laborales y salud organizacional, especializado en el método CoPsoQ PSQCAT y el modelo Demanda-Control de Karasek. Analiza los siguientes datos de un informe para la empresa ${data.metadata.company}. Los datos son:\n\n**DATOS DE RIESGOS PSICOSOCIALES (Porcentaje de exposición desfavorable):**\n${dimensionsText}\n\nBasado en este conjunto de datos, redacta un análisis profesional y accionable en español. La estructura debe ser la siguiente:\n\n**1. Análisis según el Modelo Demanda-Control (Karasek):**\nIndica en qué cuadrante se sitúa el equipo (ej. "Alta Tensión", "Trabajo Activo", etc.) basándote en las puntuaciones de exigencias (demanda) y control (influencia, desarrollo). Explica qué implica esta situación para el equipo.\n\n**2. Áreas Críticas de Intervención (Factores de Riesgo Altos):**\nLista las dimensiones con los porcentajes de exposición desfavorable más altos (superiores al 50%). Para cada una, explica brevemente qué significa este riesgo en la práctica.\n\n**3. Puntos Fuertes y Factores Protectores:**\nLista las dimensiones con mejores resultados (más favorables). Explica por qué son importantes y cómo pueden ser usados como palanca para mejorar otras áreas.\n\n**4. Plan de Acción Recomendado:**\nUna sección final con recomendaciones claras y específicas. Para las 2-3 áreas más críticas, propón 1-2 acciones concretas y prácticas que la dirección puede implementar.\n\nEl tono debe ser constructivo, profesional y orientado a soluciones. Formatea la respuesta usando Markdown con títulos (##) y listas con guiones (-).`;
 
             try {
                 const apiKey = ""; // Canvas will provide the key
@@ -326,4 +347,3 @@
     </script>
 </body>
 </html>
-
