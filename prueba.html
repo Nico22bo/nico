@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Dashboards amb Assistent de Dades (Corregit)</title>
+    <title>Generador de Dashboards amb Anàlisi de Salut per Sexe i Edat</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -50,7 +50,7 @@
     <!-- Main Content -->
     <main class="lg:ml-64 p-6 md:p-8">
         <div id="view-dashboard" class="view active"><div id="dashboard-content"></div></div>
-        <div id="view-data-assistant" class="view"><div class="card"><h2 class="text-2xl font-bold mb-2">Assistent Traductor de Dades</h2><p class="mb-4 text-slate-600">Aquesta eina t'ajuda a convertir les dades del teu informe a un format compatible.</p><div class="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 mb-4" role="alert"><p class="font-bold">Instruccions</p><ol class="list-decimal list-inside mt-2"><li>Obre el teu informe PSQCAT.</li><li>Selecciona i copia el text de la taula de dimensions (similar a l'exemple).</li><li>Enganxa el text copiat al quadre de sota.</li><li>Fes clic a "Traduir a JSON".</li></ol></div><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div class="mb-4"><label for="raw-risk-data-input" class="block text-sm font-medium">1. Enganxa aquí les dades de **Riscos**</label><textarea id="raw-risk-data-input" class="w-full h-64 p-2 border rounded-md" placeholder="Ex: Exigències quantitatives (N=87)	50,5747	34,4828	14,9425"></textarea></div><div class="mb-4"><label for="raw-health-data-input" class="block text-sm font-medium">2. Enganxa aquí les dades de **Salut i Benestar**</label><textarea id="raw-health-data-input" class="w-full h-64 p-2 border rounded-md" placeholder="Ex: Salut general de..."></textarea></div></div><button id="translate-btn" class="bg-emerald-600 text-white font-bold py-2 px-4 rounded-md hover:bg-emerald-700">3. Traduir a JSON</button></div></div>
+        <div id="view-data-assistant" class="view"><div class="card"><h2 class="text-2xl font-bold mb-2">Assistent Traductor de Dades</h2><p class="mb-4 text-slate-600">Aquesta eina t'ajuda a convertir les dades del teu informe a un format compatible.</p><div class="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 mb-4" role="alert"><p class="font-bold">Instruccions</p><ol class="list-decimal list-inside mt-2"><li>Obre el teu informe PSQCAT.</li><li>Copia el text de la taula de riscos i la de salut.</li><li>Enganxa cada text al seu quadre corresponent.</li><li>Fes clic a "Traduir a JSON".</li></ol></div><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div class="mb-4"><label for="raw-risk-data-input" class="block text-sm font-medium">1. Enganxa aquí les dades de **Riscos**</label><textarea id="raw-risk-data-input" class="w-full h-64 p-2 border rounded-md" placeholder="Ex: Exigències quantitatives (N=87)	50,5747	34,4828	14,9425"></textarea></div><div class="mb-4"><label for="raw-health-data-input" class="block text-sm font-medium">2. Enganxa aquí les dades de **Salut i Benestar**</label><textarea id="raw-health-data-input" class="w-full h-64 p-2 border rounded-md" placeholder="Ex: Salut general de..."></textarea></div></div><button id="translate-btn" class="bg-emerald-600 text-white font-bold py-2 px-4 rounded-md hover:bg-emerald-700">3. Traduir a JSON</button></div></div>
         <div id="view-data-input" class="view"><div class="card"><h2 class="text-2xl font-bold mb-4">Guardar Nou Informe</h2><p class="mb-4 text-slate-600">Revisa les dades generades, assigna un nom a l'informe i guarda'l.</p><div class="mb-4"><label for="report-name" class="block text-sm font-medium">1. Nom de l'Informe (Obligatori)</label><input id="report-name" type="text" class="w-full p-2 border border-slate-300 rounded-md" placeholder="Ej: Informe IDIAP 2024"></div><div class="mb-4"><label for="json-input" class="block text-sm font-medium">2. Dades JSON (Generades per l'assistent)</label><textarea id="json-input" class="w-full h-64 p-2 border rounded-md" placeholder="Les dades traduïdes apareixeran aquí..."></textarea></div><div id="notification-area" class="mb-4"></div><button id="save-report-btn" class="bg-fuchsia-600 text-white font-bold py-2 px-4 rounded-md hover:bg-fuchsia-700">3. Guardar Informe</button></div></div>
         <div id="view-reports" class="view"><div class="card"><h2 class="text-2xl font-bold mb-4">Els Meus Informes</h2><ul id="reports-list" class="space-y-3"></ul></div></div>
     </main>
@@ -141,7 +141,7 @@
 
             function parseDimensions(text) {
                 const dimensions = [];
-                const lines = text.split('\n').filter(line => line.trim() !== '');
+                const lines = text.split('\n').filter(line => line.trim() !== '' && !line.toLowerCase().includes('més desfavorable'));
                 
                 lines.forEach(line => {
                     const parts = line.split('\t');
@@ -161,34 +161,45 @@
             }
 
             function parseHealthMetrics(text) {
-                const metrics = { satisfaction: [], generalHealth: [], stress: [], burnout: [] };
+                const metrics = {
+                    generalHealth: {}, satisfaction: {}, stress: {}, burnout: {}
+                };
                 if (!text.trim()) return metrics;
 
-                const sections = {
-                    'Salut general': 'generalHealth',
-                    'Estrès': 'stress',
-                    'Burnout': 'burnout',
-                    'Satisfacció': 'satisfaction'
-                };
-
-                for (const [key, metricKey] of Object.entries(sections)) {
-                    const sectionRegex = new RegExp(`${key}[\\s\\S]*?TOTS([\\s\\S]*?)(?=DONES|HOMES|${Object.keys(sections).join('|')}|$)`);
-                    const sectionMatch = text.match(sectionRegex);
-                    if (sectionMatch && sectionMatch[1]) {
-                        const numbers = sectionMatch[1].match(/[\d,.]+/g) || [];
-                        const values = numbers.map(n => parseFloat(String(n).replace(',', '.')));
-                        
-                        const numCategories = (metricKey === 'satisfaction') ? 4 : 3;
-                        if (values.length >= numCategories) {
-                            const categoryValues = values.slice(0, numCategories);
-                            if (metricKey === 'generalHealth') {
-                                metrics[metricKey] = [categoryValues[2], categoryValues[1], categoryValues[0]];
-                            } else {
-                                metrics[metricKey] = categoryValues;
+                const metricKeywords = ['Salut general de', 'Salut mental de', 'Estrès de', 'Burnout de', 'Satisfacció de'];
+                
+                metricKeywords.forEach(keyword => {
+                    const key = keyword.split(' ')[0].toLowerCase().replace('è', 'e');
+                    const regex = new RegExp(`${keyword}[\\s\\S]*?(?=(${metricKeywords.join('|')})|$)`);
+                    const sectionMatch = text.match(regex);
+                    
+                    if (sectionMatch) {
+                        const sectionText = sectionMatch[0];
+                        const data = {};
+                        ['TOTS', 'DONES', 'HOMES'].forEach(group => {
+                            const groupRegex = new RegExp(`${group}([\\s\\S]*?)(?=(DONES|HOMES|${metricKeywords.join('|')})|$)`);
+                            const groupMatch = sectionText.match(groupRegex);
+                            if (groupMatch) {
+                                const groupData = {};
+                                const ageRanges = ["Menys de 31 anys", "Entre 31 - 45 anys", "Més de 45 anys"];
+                                ageRanges.forEach(age => {
+                                    const ageRegex = new RegExp(`${age}\\s*([\\d,]+)\\s*([\\d,]+)\\s*([\\d,]+)\\s*([\\d,]*)`);
+                                    const ageMatch = groupMatch[1].match(ageRegex);
+                                    if (ageMatch) {
+                                        const values = ageMatch.slice(1).filter(Boolean).map(v => parseFloat(v.replace(',', '.')));
+                                        let ageKey = '';
+                                        if (age.includes('Menys de 31')) ageKey = 'under31';
+                                        if (age.includes('Entre 31')) ageKey = 'between31_45';
+                                        if (age.includes('Més de 45')) ageKey = 'over45';
+                                        groupData[ageKey] = values;
+                                    }
+                                });
+                                data[group.toLowerCase()] = groupData;
                             }
-                        }
+                        });
+                        metrics[key] = data;
                     }
-                }
+                });
                 return metrics;
             }
 
@@ -230,12 +241,20 @@
                             ${createRiskCard("Exposicions Millorables", improvable, 'bg-yellow-100', 'text-yellow-700')}
                             ${createRiskCard("Exposicions Favorables", favorable, 'bg-green-100', 'text-green-700')}
                         </div>
-                        <h3 class="text-2xl font-bold mb-4">Salut i Benestar</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                            ${createHealthCard('satisfaction', 'Satisfacció')}
-                            ${createHealthCard('generalHealth', 'Salut General')}
-                            ${createHealthCard('stress', 'Estrès')}
-                            ${createHealthCard('burnout', 'Burnout')}
+                        <div class="card mb-8">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-2xl font-bold">Salut i Benestar</h3>
+                                <div class="flex items-center gap-2">
+                                    <label for="age-filter" class="text-sm font-medium">Filtre per Edat:</label>
+                                    <select id="age-filter" class="p-1 border rounded-md text-sm">
+                                        <option value="tots">Tots</option>
+                                        <option value="under31">Menys de 31 anys</option>
+                                        <option value="between31_45">Entre 31 - 45 anys</option>
+                                        <option value="over45">Més de 45 anys</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="health-charts-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
                         </div>
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                             <div class="card">
@@ -253,7 +272,8 @@
                             </div>
                         </div>
                     `;
-                    renderHealthCharts(data.healthMetrics);
+                    renderHealthCharts(data, 'tots');
+                    document.getElementById('age-filter').addEventListener('change', (e) => renderHealthCharts(data, e.target.value));
                     document.getElementById('generate-conclusions-btn').addEventListener('click', () => generateConclusions(data));
                 } catch (e) {
                     DOM.dashboardContent.innerHTML = `<div class="card text-red-600">Error en processar les dades de l'informe: ${e.message}</div>`;
@@ -264,17 +284,47 @@
                 return `<div class="card"><h4 class="font-bold text-lg mb-3 ${textColor}">${title}</h4><ul class="space-y-2 text-sm">${dimensions.map(d => `<li class="flex justify-between items-center"><span>${d.name}</span><span class="font-semibold ${textColor} ${bgColor} px-2 py-1 rounded-md">${d.unfavorable.toFixed(1)}%</span></li>`).join('') || '<li>No hi ha dimensions en aquesta categoria.</li>'}</ul></div>`;
             }
 
-            function createHealthCard(id, title) {
-                return `<div class="card"><h4 class="text-lg font-semibold text-center mb-2">${title}</h4><canvas id="${id}-chart"></canvas></div>`;
-            }
-
-            function renderHealthCharts(metrics) {
+            function renderHealthCharts(data, ageGroup) {
+                const container = document.getElementById('health-charts-container');
+                container.innerHTML = '';
                 Object.values(charts).forEach(chart => chart.destroy());
-                if (!metrics) return;
-                if(metrics.satisfaction && metrics.satisfaction.length) charts.satisfaction = new Chart(document.getElementById('satisfaction-chart').getContext('2d'), { type: 'pie', data: { labels: ['Molt Satisfet', 'Satisfet', 'Insatisfet', 'Molt Insatisfet'], datasets: [{ data: metrics.satisfaction, backgroundColor: ['#22c55e', '#a3e635', '#facc15', '#ef4444'] }] }, options: { responsive: true, plugins: { legend: { display: false } } } });
-                if(metrics.generalHealth && metrics.generalHealth.length) charts.generalHealth = new Chart(document.getElementById('generalHealth-chart').getContext('2d'), { type: 'pie', data: { labels: ['Excel·lent/Bona', 'Bona', 'Regular/Dolenta'], datasets: [{ data: metrics.generalHealth, backgroundColor: ['#22c55e', '#a3e635', '#ef4444'] }] }, options: { responsive: true, plugins: { legend: { display: false } } } });
-                if(metrics.stress && metrics.stress.length) charts.stress = new Chart(document.getElementById('stress-chart').getContext('2d'), { type: 'pie', data: { labels: ['Baix (Verd)', 'Mitjà (Groc)', 'Alt (Vermell)'], datasets: [{ data: metrics.stress, backgroundColor: ['#22c55e', '#facc15', '#ef4444'] }] }, options: { responsive: true, plugins: { legend: { display: false } } } });
-                if(metrics.burnout && metrics.burnout.length) charts.burnout = new Chart(document.getElementById('burnout-chart').getContext('2d'), { type: 'pie', data: { labels: ['Baix (Verd)', 'Mitjà (Groc)', 'Alt (Vermell)'], datasets: [{ data: metrics.burnout, backgroundColor: ['#22c55e', '#facc15', '#ef4444'] }] }, options: { responsive: true, plugins: { legend: { display: false } } } });
+                
+                if (!data.healthMetrics) return;
+
+                const metrics = [
+                    { key: 'generalHealth', title: 'Salut General', labels: ['Excel·lent/Bona', 'Bona', 'Regular/Dolenta'], colors: ['#22c55e', '#a3e635', '#ef4444'] },
+                    { key: 'salut mental', title: 'Salut Mental', labels: ['Inferior', 'Mitjà', 'Superior'], colors: ['#22c55e', '#facc15', '#ef4444'] },
+                    { key: 'stress', title: 'Estrès', labels: ['Baix (Verd)', 'Mitjà (Groc)', 'Alt (Vermell)'], colors: ['#22c55e', '#facc15', '#ef4444'] },
+                    { key: 'burnout', title: 'Burnout', labels: ['Baix (Verd)', 'Mitjà (Groc)', 'Alt (Vermell)'], colors: ['#22c55e', '#facc15', '#ef4444'] },
+                    { key: 'satisfaction', title: 'Satisfacció', labels: ['Molt Satisfet', 'Satisfet', 'Insatisfet', 'Molt Insatisfet'], colors: ['#22c55e', '#a3e635', '#facc15', '#ef4444'] }
+                ];
+
+                metrics.forEach(metric => {
+                    const metricData = data.healthMetrics[metric.key];
+                    if (!metricData) return;
+
+                    const donesData = metricData.dones ? (metricData.dones[ageGroup] || []) : [];
+                    const homesData = metricData.homes ? (metricData.homes[ageGroup] || []) : [];
+
+                    if (donesData.length === 0 && homesData.length === 0) return;
+
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `<h4 class="text-lg font-semibold text-center mb-2">${metric.title}</h4><canvas id="${metric.key}-chart"></canvas>`;
+                    container.appendChild(card);
+
+                    charts[metric.key] = new Chart(document.getElementById(`${metric.key}-chart`).getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: metric.labels,
+                            datasets: [
+                                { label: 'Dones', data: donesData, backgroundColor: 'rgba(219, 39, 119, 0.7)' },
+                                { label: 'Homes', data: homesData, backgroundColor: 'rgba(59, 130, 246, 0.7)' }
+                            ]
+                        },
+                        options: { responsive: true, indexAxis: 'y', plugins: { legend: { position: 'bottom' } } }
+                    });
+                });
             }
             
             function getKarasekModelSVG(data) {
@@ -381,3 +431,4 @@
     </script>
 </body>
 </html>
+
