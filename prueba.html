@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Dashboards PSQCAT (Lector PDF Definitivo + IA)</title>
+    <title>Generador de Dashboards con Asistente de Datos</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.min.js"></script>
@@ -39,7 +39,8 @@
         <nav>
             <ul class="space-y-2" id="nav-links">
                 <li><a href="#dashboard" data-view="dashboard" class="nav-link flex items-center p-2 rounded-md hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3"><path d="M12 20V10M18 20V4M6 20V16"/></svg>Dashboard</a></li>
-                <li><a href="#data-input" data-view="data-input" class="nav-link flex items-center p-2 rounded-md hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Introducir Datos</a></li>
+                <li><a href="#data-assistant" data-view="data-assistant" class="nav-link flex items-center p-2 rounded-md hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3"><path d="M12 2a10 10 0 00-9.95 9.5c.05.59.41 1.05.95 1.05h18c.54 0 .9-.46.95-1.05A10 10 0 0012 2z"/><path d="M12 12v10M12 2L4.5 4.5M12 2l7.5 2.5"/></svg>Asistente de Datos</a></li>
+                <li><a href="#data-input" data-view="data-input" class="nav-link flex items-center p-2 rounded-md hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Guardar Informe</a></li>
                 <li><a href="#reports" data-view="reports" class="nav-link flex items-center p-2 rounded-md hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Mis Informes</a></li>
             </ul>
         </nav>
@@ -53,7 +54,8 @@
     <!-- Main Content -->
     <main class="lg:ml-64 p-6 md:p-8">
         <div id="view-dashboard" class="view active"><div id="dashboard-content"></div></div>
-        <div id="view-data-input" class="view"><div class="card"><h2 class="text-2xl font-bold mb-4">Subir Nuevo Informe</h2><p class="mb-4 text-slate-600">Sube un archivo PDF de PSQCAT para rellenar los datos, o pégalos manualmente en formato JSON.</p><div class="mb-4 p-4 border border-dashed rounded-md"><label for="file-input" class="block text-sm font-medium mb-2">1. Cargar archivo PDF</label><input id="file-input" type="file" accept=".pdf" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:font-semibold file:bg-fuchsia-50 file:text-fuchsia-700 hover:file:bg-fuchsia-100"/><div id="file-processing-loader" class="mt-2 hidden items-center gap-2"><div class="loader"></div><span>Procesando archivo...</span></div></div><div class="mb-4"><label for="report-name" class="block text-sm font-medium">2. Nombre del Informe (Obligatorio)</label><input id="report-name" type="text" class="w-full p-2 border border-slate-300 rounded-md" placeholder="Ej: Informe IDIAP 2024"></div><div class="mb-4"><label for="json-input" class="block text-sm font-medium">3. Datos JSON (Revisar o pegar)</label><textarea id="json-input" class="w-full h-64 p-2 border rounded-md" placeholder="Los datos del archivo aparecerán aquí..."></textarea></div><div id="notification-area" class="mb-4"></div><button id="save-report-btn" class="bg-fuchsia-600 text-white font-bold py-2 px-4 rounded-md hover:bg-fuchsia-700">Guardar Informe</button></div></div>
+        <div id="view-data-assistant" class="view"><div class="card"><h2 class="text-2xl font-bold mb-2">Asistente Traductor de Datos</h2><p class="mb-4 text-slate-600">Esta herramienta te ayuda a convertir los datos de tu PDF a un formato que la aplicación pueda leer.</p><div class="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 mb-4" role="alert"><p class="font-bold">Instrucciones</p><ol class="list-decimal list-inside mt-2"><li>Abre tu informe PDF (ej. `idiap 2024.pdf`).</li><li>Ve a la página 19 y selecciona y copia todo el texto de la "Taula 27".</li><li>Pega el texto copiado en el cuadro de abajo.</li><li>Haz clic en "Traducir a JSON".</li></ol></div><div class="mb-4"><label for="raw-data-input" class="block text-sm font-medium">1. Pega aquí los datos de la "Taula 27"</label><textarea id="raw-data-input" class="w-full h-64 p-2 border rounded-md" placeholder="Pega el texto aquí..."></textarea></div><button id="translate-btn" class="bg-emerald-600 text-white font-bold py-2 px-4 rounded-md hover:bg-emerald-700">2. Traducir a JSON</button></div></div>
+        <div id="view-data-input" class="view"><div class="card"><h2 class="text-2xl font-bold mb-4">Guardar Nuevo Informe</h2><p class="mb-4 text-slate-600">Revisa los datos generados, asigna un nombre al informe y guárdalo.</p><div class="mb-4"><label for="report-name" class="block text-sm font-medium">1. Nombre del Informe (Obligatorio)</label><input id="report-name" type="text" class="w-full p-2 border border-slate-300 rounded-md" placeholder="Ej: Informe IDIAP 2024"></div><div class="mb-4"><label for="json-input" class="block text-sm font-medium">2. Datos JSON (Generados por el asistente)</label><textarea id="json-input" class="w-full h-64 p-2 border rounded-md" placeholder="Los datos traducidos aparecerán aquí..."></textarea></div><div id="notification-area" class="mb-4"></div><button id="save-report-btn" class="bg-fuchsia-600 text-white font-bold py-2 px-4 rounded-md hover:bg-fuchsia-700">3. Guardar Informe</button></div></div>
         <div id="view-reports" class="view"><div class="card"><h2 class="text-2xl font-bold mb-4">Mis Informes</h2><ul id="reports-list" class="space-y-3"></ul></div></div>
     </main>
 
@@ -84,8 +86,8 @@
             reportNameInput: document.getElementById('report-name'),
             jsonInput: document.getElementById('json-input'),
             notificationArea: document.getElementById('notification-area'),
-            fileInput: document.getElementById('file-input'),
-            loader: document.getElementById('file-processing-loader'),
+            rawDataInput: document.getElementById('raw-data-input'),
+            translateBtn: document.getElementById('translate-btn'),
             navToggle: document.getElementById('nav-toggle'),
             sidebar: document.getElementById('sidebar')
         };
@@ -104,86 +106,58 @@
             });
         });
         DOM.navToggle.addEventListener('click', () => DOM.sidebar.classList.toggle('open'));
-        DOM.fileInput.addEventListener('change', handleFileSelect);
-
-        function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            DOM.loader.style.display = 'flex';
-            const reader = new FileReader();
-            reader.onload = (e) => processPdf(e.target.result);
-            reader.readAsArrayBuffer(file);
-        }
+        DOM.translateBtn.addEventListener('click', translatePastedData);
         
-        async function processPdf(arrayBuffer) {
-            try {
-                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                let fullText = '';
-                for (let i = 1; i <= pdf.numPages; i++) {
-                    const page = await pdf.getPage(i);
-                    const textContent = await page.getTextContent();
-                    fullText += textContent.items.map(item => item.str).join(' ');
-                }
-                
-                const psqcatData = {
-                    metadata: parseMetadata(fullText),
-                    dimensions: parseDimensions(fullText),
-                    healthMetrics: {}, // This specific PDF does not contain health metrics.
-                    conclusions: { summary: "Datos extraídos de PDF. Genere el análisis para obtener conclusiones." }
-                };
-
-                if (psqcatData.dimensions.length < 10) { // Check if parsing was successful
-                    throw new Error("No se pudieron extraer suficientes dimensiones de la Tabla 27. Verifique el formato del PDF.");
-                }
-
-                DOM.jsonInput.value = JSON.stringify(psqcatData, null, 2);
-                renderNotification('PDF procesado con éxito. Revisa los datos y guarda el informe.', 'success');
-            } catch(e) {
-                renderNotification('Error procesando el PDF: ' + e.message, 'error');
-            } finally {
-                DOM.loader.style.display = 'none';
+        function translatePastedData() {
+            const rawText = DOM.rawDataInput.value;
+            if (!rawText.trim()) {
+                alert("Por favor, pega el texto de la tabla en el cuadro.");
+                return;
             }
-        }
-        
-        function parseMetadata(text) {
-             const companyMatch = text.match(/RISCOS PSICOSOCIALS A ([\w\s\d]+)/);
-             const dateMatch = text.match(/data: (\d{1,2} de [a-z]+ de \d{4})/);
-             const participantsMatch = text.match(/van contestar (\d+) treballadors/);
-             const totalSurveyedMatch = text.match(/dels (\d+) a qui es va proporcionar/);
-             return {
-                company: companyMatch ? companyMatch[1].trim() : "Empresa Desconocida",
-                date: dateMatch ? dateMatch[1] : new Date().toLocaleDateString(),
-                participants: participantsMatch ? parseInt(participantsMatch[1]) : 0,
-                totalSurveyed: totalSurveyedMatch ? parseInt(totalSurveyedMatch[1]) : (participantsMatch ? parseInt(participantsMatch[1]) : 0)
-             };
+            
+            try {
+                const dimensions = parseDimensions(rawText);
+                if (dimensions.length < 10) {
+                    throw new Error("No se pudieron extraer suficientes dimensiones. Asegúrate de copiar toda la tabla.");
+                }
+
+                const psqcatData = {
+                    metadata: { company: "IDIAP 2024 (Datos Pegados)", date: new Date().toLocaleDateString(), participants: 93, totalSurveyed: 93 },
+                    dimensions: dimensions,
+                    healthMetrics: {},
+                    conclusions: { summary: "Datos generados desde el asistente. Genere el análisis para obtener conclusiones." }
+                };
+                
+                DOM.jsonInput.value = JSON.stringify(psqcatData, null, 2);
+                renderNotification('Datos traducidos a JSON con éxito. Ahora puedes nombrar y guardar el informe.', 'success');
+                switchView('data-input');
+            } catch (e) {
+                renderNotification('Error al traducir los datos: ' + e.message, 'error');
+            }
         }
 
         function parseDimensions(text) {
             const dimensions = [];
-            const startMarker = "Taula 27:";
-            const endMarker = "Vermell: tercil";
-            const startIndex = text.indexOf(startMarker);
-            const endIndex = text.indexOf(endMarker);
-
-            if (startIndex === -1 || endIndex === -1) return [];
-
-            let tableText = text.substring(startIndex, endIndex);
-            tableText = tableText.replace(/MÉS PROBLEMÀTIQUES|MENYS PROBLEMÀTIQUES|O FAVORABLES|Dimensió|Taula 27:.*?Més favorable/g, ' ').trim();
-
-            const regex = /([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s\/'.]+?)\s+([\d,.]+)\s+([\d,.]+)\s+([\d,.]+)/g;
+            const lines = text.split('\n').filter(line => line.trim() !== '');
             
-            let match;
-            while ((match = regex.exec(tableText)) !== null) {
-                let name = match[1].trim();
-                if (name && name.length > 4 && isNaN(name)) {
-                    dimensions.push({
-                        name: name,
-                        unfavorable: parseFloat(String(match[2]).replace(',', '.')),
-                        intermediate: parseFloat(String(match[3]).replace(',', '.')),
-                        favorable: parseFloat(String(match[4]).replace(',', '.'))
-                    });
+            lines.forEach(line => {
+                // Regex to find a name followed by three numbers (with comma or dot)
+                const match = line.match(/^([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s\/'.]+?)\s+([\d,.]+)\s+([\d,.]+)\s+([\d,.]+)$/);
+                if (match) {
+                    let name = match[1].trim()
+                        .replace(/MÉS PROBLEMÀTIQUES|MENYS PROBLEMÀTIQUES|O FAVORABLES|Dimensió/gi, '')
+                        .trim();
+                    
+                    if (name && name.length > 4) {
+                        dimensions.push({
+                            name: name,
+                            unfavorable: parseFloat(String(match[2]).replace(',', '.')),
+                            intermediate: parseFloat(String(match[3]).replace(',', '.')),
+                            favorable: parseFloat(String(match[4]).replace(',', '.'))
+                        });
+                    }
                 }
-            }
+            });
             return dimensions;
         }
 
@@ -356,3 +330,4 @@
     </script>
 </body>
 </html>
+
