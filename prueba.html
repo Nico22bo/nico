@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Dashboards amb Anàlisi de Salut per Sexe i Edat</title>
+    <title>Generador de Dashboards amb Anàlisi de Salut Desglossat</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -162,14 +162,14 @@
 
             function parseHealthMetrics(text) {
                 const metrics = {
-                    generalHealth: {}, satisfaction: {}, stress: {}, burnout: {}
+                    generalHealth: {}, satisfaction: {}, stress: {}, burnout: {}, 'salut mental': {}
                 };
                 if (!text.trim()) return metrics;
 
                 const metricKeywords = ['Salut general de', 'Salut mental de', 'Estrès de', 'Burnout de', 'Satisfacció de'];
                 
                 metricKeywords.forEach(keyword => {
-                    const key = keyword.split(' ')[0].toLowerCase().replace('è', 'e');
+                    const key = keyword.replace(' de', '').toLowerCase().replace('è', 'e').replace(' ', '');
                     const regex = new RegExp(`${keyword}[\\s\\S]*?(?=(${metricKeywords.join('|')})|$)`);
                     const sectionMatch = text.match(regex);
                     
@@ -229,9 +229,9 @@
                 }
                 try {
                     const data = JSON.parse(selectedReport.data);
-                    const problematic = data.dimensions.filter(d => d.unfavorable >= 50);
-                    const improvable = data.dimensions.filter(d => d.unfavorable >= 33.3 && d.unfavorable < 50);
-                    const favorable = data.dimensions.filter(d => d.unfavorable < 33.3);
+                    const problematic = data.dimensions.filter(d => d.unfavorable > 50);
+                    const improvable = data.dimensions.filter(d => d.unfavorable >= 33.3 && d.unfavorable <= 49.9);
+                    const favorable = data.dimensions.filter(d => d.favorable > 33.3);
 
                     DOM.dashboardContent.innerHTML = `
                         <h2 class="text-3xl font-bold mb-2">Dashboard: <span class="text-fuchsia-600">${selectedReport.name}</span></h2>
@@ -242,7 +242,7 @@
                             ${createRiskCard("Exposicions Favorables", favorable, 'bg-green-100', 'text-green-700')}
                         </div>
                         <div class="card mb-8">
-                            <div class="flex justify-between items-center mb-4">
+                            <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
                                 <h3 class="text-2xl font-bold">Salut i Benestar</h3>
                                 <div class="flex items-center gap-2">
                                     <label for="age-filter" class="text-sm font-medium">Filtre per Edat:</label>
@@ -284,7 +284,7 @@
                 return `<div class="card"><h4 class="font-bold text-lg mb-3 ${textColor}">${title}</h4><ul class="space-y-2 text-sm">${dimensions.map(d => `<li class="flex justify-between items-center"><span>${d.name}</span><span class="font-semibold ${textColor} ${bgColor} px-2 py-1 rounded-md">${d.unfavorable.toFixed(1)}%</span></li>`).join('') || '<li>No hi ha dimensions en aquesta categoria.</li>'}</ul></div>`;
             }
 
-            function renderHealthCharts(data, ageGroup) {
+            function renderHealthCharts(data, ageGroupKey) {
                 const container = document.getElementById('health-charts-container');
                 container.innerHTML = '';
                 Object.values(charts).forEach(chart => chart.destroy());
@@ -292,19 +292,42 @@
                 if (!data.healthMetrics) return;
 
                 const metrics = [
-                    { key: 'generalHealth', title: 'Salut General', labels: ['Excel·lent/Bona', 'Bona', 'Regular/Dolenta'], colors: ['#22c55e', '#a3e635', '#ef4444'] },
-                    { key: 'salut mental', title: 'Salut Mental', labels: ['Inferior', 'Mitjà', 'Superior'], colors: ['#22c55e', '#facc15', '#ef4444'] },
-                    { key: 'stress', title: 'Estrès', labels: ['Baix (Verd)', 'Mitjà (Groc)', 'Alt (Vermell)'], colors: ['#22c55e', '#facc15', '#ef4444'] },
-                    { key: 'burnout', title: 'Burnout', labels: ['Baix (Verd)', 'Mitjà (Groc)', 'Alt (Vermell)'], colors: ['#22c55e', '#facc15', '#ef4444'] },
-                    { key: 'satisfaction', title: 'Satisfacció', labels: ['Molt Satisfet', 'Satisfet', 'Insatisfet', 'Molt Insatisfet'], colors: ['#22c55e', '#a3e635', '#facc15', '#ef4444'] }
+                    { key: 'generalhealth', title: 'Salut General', labels: ['Excel·lent/Bona', 'Bona', 'Regular/Dolenta'] },
+                    { key: 'salutmental', title: 'Salut Mental', labels: ['Superior', 'Mitjà', 'Inferior'] },
+                    { key: 'stress', title: 'Estrès', labels: ['Baix (Verd)', 'Mitjà (Groc)', 'Alt (Vermell)'] },
+                    { key: 'burnout', title: 'Burnout', labels: ['Baix (Verd)', 'Mitjà (Groc)', 'Alt (Vermell)'] },
+                    { key: 'satisfaction', title: 'Satisfacció', labels: ['Molt Satisfet', 'Satisfet', 'Insatisfet', 'Molt Insatisfet'] }
                 ];
 
                 metrics.forEach(metric => {
                     const metricData = data.healthMetrics[metric.key];
                     if (!metricData) return;
 
-                    const donesData = metricData.dones ? (metricData.dones[ageGroup] || []) : [];
-                    const homesData = metricData.homes ? (metricData.homes[ageGroup] || []) : [];
+                    let donesData = [], homesData = [];
+                    if (ageGroupKey === 'tots') {
+                        // Average the age groups for "TOTS"
+                        const ageKeys = ['under31', 'between31_45', 'over45'];
+                        const numCategories = metric.labels.length;
+                        for(let i=0; i < numCategories; i++) {
+                            let donesSum = 0, donesCount = 0;
+                            let homesSum = 0, homesCount = 0;
+                            ageKeys.forEach(ageKey => {
+                                if (metricData.dones && metricData.dones[ageKey] && metricData.dones[ageKey][i] !== undefined) {
+                                    donesSum += metricData.dones[ageKey][i];
+                                    donesCount++;
+                                }
+                                if (metricData.homes && metricData.homes[ageKey] && metricData.homes[ageKey][i] !== undefined) {
+                                    homesSum += metricData.homes[ageKey][i];
+                                    homesCount++;
+                                }
+                            });
+                            donesData.push(donesCount > 0 ? donesSum / donesCount : 0);
+                            homesData.push(homesCount > 0 ? homesSum / homesCount : 0);
+                        }
+                    } else {
+                        donesData = metricData.dones ? (metricData.dones[ageGroupKey] || []) : [];
+                        homesData = metricData.homes ? (metricData.homes[ageGroupKey] || []) : [];
+                    }
 
                     if (donesData.length === 0 && homesData.length === 0) return;
 
@@ -318,11 +341,11 @@
                         data: {
                             labels: metric.labels,
                             datasets: [
-                                { label: 'Dones', data: donesData, backgroundColor: 'rgba(219, 39, 119, 0.7)' },
-                                { label: 'Homes', data: homesData, backgroundColor: 'rgba(59, 130, 246, 0.7)' }
+                                { label: 'Dones', data: donesData, backgroundColor: 'rgba(219, 39, 119, 0.7)', borderWidth: 1 },
+                                { label: 'Homes', data: homesData, backgroundColor: 'rgba(59, 130, 246, 0.7)', borderWidth: 1 }
                             ]
                         },
-                        options: { responsive: true, indexAxis: 'y', plugins: { legend: { position: 'bottom' } } }
+                        options: { responsive: true, indexAxis: 'y', plugins: { legend: { position: 'bottom' } }, scales: { x: { suggestedMax: 100, beginAtZero: true } } }
                     });
                 });
             }
