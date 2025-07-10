@@ -3,13 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Dashboards con Asistente de Datos</title>
+    <title>Generador de Dashboards amb Assistent de Dades Millorat</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.min.js"></script>
-    <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.worker.min.js`;
-    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -54,7 +50,7 @@
     <!-- Main Content -->
     <main class="lg:ml-64 p-6 md:p-8">
         <div id="view-dashboard" class="view active"><div id="dashboard-content"></div></div>
-        <div id="view-data-assistant" class="view"><div class="card"><h2 class="text-2xl font-bold mb-2">Asistente Traductor de Datos</h2><p class="mb-4 text-slate-600">Esta herramienta te ayuda a convertir los datos de tu PDF a un formato que la aplicación pueda leer.</p><div class="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 mb-4" role="alert"><p class="font-bold">Instrucciones</p><ol class="list-decimal list-inside mt-2"><li>Abre tu informe PDF (ej. `idiap 2024.pdf`).</li><li>Ve a la página 19 y selecciona y copia todo el texto de la "Taula 27".</li><li>Pega el texto copiado en el cuadro de abajo.</li><li>Haz clic en "Traducir a JSON".</li></ol></div><div class="mb-4"><label for="raw-data-input" class="block text-sm font-medium">1. Pega aquí los datos de la "Taula 27"</label><textarea id="raw-data-input" class="w-full h-64 p-2 border rounded-md" placeholder="Pega el texto aquí..."></textarea></div><button id="translate-btn" class="bg-emerald-600 text-white font-bold py-2 px-4 rounded-md hover:bg-emerald-700">2. Traducir a JSON</button></div></div>
+        <div id="view-data-assistant" class="view"><div class="card"><h2 class="text-2xl font-bold mb-2">Asistente Traductor de Datos</h2><p class="mb-4 text-slate-600">Copia y pega el texto de tus tablas de PSQCAT para convertirlos a un formato compatible.</p><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div class="mb-4"><label for="raw-risk-data-input" class="block text-sm font-medium">1. Pega aquí los datos de **Riesgos** (Tabla 27)</label><textarea id="raw-risk-data-input" class="w-full h-64 p-2 border rounded-md" placeholder="Ej: Exigències quantitatives... 50,57..."></textarea></div><div class="mb-4"><label for="raw-health-data-input" class="block text-sm font-medium">2. Pega aquí los datos de **Salud y Bienestar**</label><textarea id="raw-health-data-input" class="w-full h-64 p-2 border rounded-md" placeholder="Ej: Salut general de..."></textarea></div></div><button id="translate-btn" class="bg-emerald-600 text-white font-bold py-2 px-4 rounded-md hover:bg-emerald-700">3. Traducir a JSON</button></div></div>
         <div id="view-data-input" class="view"><div class="card"><h2 class="text-2xl font-bold mb-4">Guardar Nuevo Informe</h2><p class="mb-4 text-slate-600">Revisa los datos generados, asigna un nombre al informe y guárdalo.</p><div class="mb-4"><label for="report-name" class="block text-sm font-medium">1. Nombre del Informe (Obligatorio)</label><input id="report-name" type="text" class="w-full p-2 border border-slate-300 rounded-md" placeholder="Ej: Informe IDIAP 2024"></div><div class="mb-4"><label for="json-input" class="block text-sm font-medium">2. Datos JSON (Generados por el asistente)</label><textarea id="json-input" class="w-full h-64 p-2 border rounded-md" placeholder="Los datos traducidos aparecerán aquí..."></textarea></div><div id="notification-area" class="mb-4"></div><button id="save-report-btn" class="bg-fuchsia-600 text-white font-bold py-2 px-4 rounded-md hover:bg-fuchsia-700">3. Guardar Informe</button></div></div>
         <div id="view-reports" class="view"><div class="card"><h2 class="text-2xl font-bold mb-4">Mis Informes</h2><ul id="reports-list" class="space-y-3"></ul></div></div>
     </main>
@@ -64,7 +60,6 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
-        // This function will run once the entire HTML document is loaded and parsed.
         document.addEventListener('DOMContentLoaded', () => {
             const firebaseConfig = {
                 apiKey: "AIzaSyBsRchId8KlzJfcaKuqeOFWPJcmopCq8V8",
@@ -79,7 +74,6 @@
             let db, auth, userId, selectedReport = null, reportsUnsubscribe = null;
             const charts = {};
 
-            // Define DOM elements inside the listener to ensure they exist.
             const DOM = {
                 views: document.querySelectorAll('.view'),
                 navLinks: document.querySelectorAll('.nav-link'),
@@ -89,7 +83,8 @@
                 reportNameInput: document.getElementById('report-name'),
                 jsonInput: document.getElementById('json-input'),
                 notificationArea: document.getElementById('notification-area'),
-                rawDataInput: document.getElementById('raw-data-input'),
+                rawRiskDataInput: document.getElementById('raw-risk-data-input'),
+                rawHealthDataInput: document.getElementById('raw-health-data-input'),
                 translateBtn: document.getElementById('translate-btn'),
                 navToggle: document.getElementById('nav-toggle'),
                 sidebar: document.getElementById('sidebar')
@@ -101,7 +96,6 @@
                 if (viewId === 'dashboard') renderDashboard();
             }
 
-            // Attach event listeners
             DOM.navLinks.forEach(link => {
                 link.addEventListener('click', (e) => {
                     e.preventDefault();
@@ -114,23 +108,27 @@
             DOM.saveReportBtn.addEventListener('click', saveReport);
             
             function translatePastedData() {
-                const rawText = DOM.rawDataInput.value;
-                if (!rawText.trim()) {
-                    alert("Por favor, pega el texto de la tabla en el cuadro.");
+                const riskText = DOM.rawRiskDataInput.value;
+                const healthText = DOM.rawHealthDataInput.value;
+                
+                if (!riskText.trim()) {
+                    alert("Por favor, pega el texto de la tabla de riesgos.");
                     return;
                 }
                 
                 try {
-                    const dimensions = parseDimensions(rawText);
-                    if (dimensions.length < 10) {
-                        throw new Error("No se pudieron extraer suficientes dimensiones. Asegúrate de copiar toda la tabla.");
+                    const dimensions = parseDimensions(riskText);
+                    const healthMetrics = parseHealthMetrics(healthText);
+
+                    if (dimensions.length === 0) {
+                        throw new Error("No se pudieron extraer dimensiones de riesgo. Asegúrate de copiar las líneas con el formato correcto.");
                     }
 
                     const psqcatData = {
-                        metadata: { company: "IDIAP 2024 (Datos Pegados)", date: new Date().toLocaleDateString(), participants: 93, totalSurveyed: 93 },
+                        metadata: { company: "Informe Traducido", date: new Date().toLocaleDateString(), participants: 100, totalSurveyed: 100 },
                         dimensions: dimensions,
-                        healthMetrics: {},
-                        conclusions: { summary: "Datos generados desde el asistente. Genere el análisis para obtener conclusiones." }
+                        healthMetrics: healthMetrics,
+                        conclusions: { summary: "Datos generados desde el asistente." }
                     };
                     
                     DOM.jsonInput.value = JSON.stringify(psqcatData, null, 2);
@@ -146,13 +144,10 @@
                 const lines = text.split('\n').filter(line => line.trim() !== '');
                 
                 lines.forEach(line => {
-                    const match = line.match(/^([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s\/'.]+?)\s+([\d,.]+)\s+([\d,.]+)\s+([\d,.]+)$/);
+                    const match = line.match(/^([A-Za-zÀ-ÿ\s()=']+?)\s+([\d,]+)\s+([\d,]+)\s+([\d,]+)$/);
                     if (match) {
-                        let name = match[1].trim()
-                            .replace(/MÉS PROBLEMÀTIQUES|MENYS PROBLEMÀTIQUES|O FAVORABLES|Dimensió/gi, '')
-                            .trim();
-                        
-                        if (name && name.length > 4) {
+                        let name = match[1].replace(/\(N=\d+\)/, '').trim();
+                        if (name) {
                             dimensions.push({
                                 name: name,
                                 unfavorable: parseFloat(String(match[2]).replace(',', '.')),
@@ -163,6 +158,48 @@
                     }
                 });
                 return dimensions;
+            }
+
+            function parseHealthMetrics(text) {
+                const metrics = { satisfaction: [], generalHealth: [], stress: [], burnout: [] };
+                if (!text) return metrics;
+
+                const sections = {
+                    'Salut general': 'generalHealth',
+                    'Estrès': 'stress',
+                    'Burnout': 'burnout',
+                    'Satisfacció': 'satisfaction'
+                };
+
+                for (const [key, metricKey] of Object.entries(sections)) {
+                    const sectionRegex = new RegExp(`${key}[\\s\\S]*?TOTS([\\s\\S]*?)(?=DONES|HOMES|\\n\\n|$)`);
+                    const sectionMatch = text.match(sectionRegex);
+                    if (sectionMatch && sectionMatch[1]) {
+                        const numbers = sectionMatch[1].match(/[\d,]+/g) || [];
+                        const values = numbers.map(n => parseFloat(n.replace(',', '.')));
+                        
+                        // We need the overall values, not the age breakdown. We will average the "TOTS" values.
+                        const numCategories = (metricKey === 'satisfaction') ? 4 : 3;
+                        if (values.length >= numCategories) {
+                            const averagedValues = [];
+                            for(let i=0; i < numCategories; i++) {
+                                let sum = 0;
+                                let count = 0;
+                                for(let j=i; j < values.length; j+=numCategories) {
+                                    sum += values[j];
+                                    count++;
+                                }
+                                averagedValues.push(sum/count);
+                            }
+                             if (metricKey === 'generalHealth') {
+                                metrics[metricKey] = [averagedValues[2], averagedValues[1], averagedValues[0]]; // Reorder to match chart
+                            } else {
+                                metrics[metricKey] = averagedValues;
+                            }
+                        }
+                    }
+                }
+                return metrics;
             }
 
             function renderNotification(message, type = 'success') {
@@ -203,6 +240,13 @@
                             ${createRiskCard("Exposiciones Mejorables", improvable, 'bg-yellow-100', 'text-yellow-700')}
                             ${createRiskCard("Exposiciones Favorables", favorable, 'bg-green-100', 'text-green-700')}
                         </div>
+                        <h3 class="text-2xl font-bold mb-4">Salud y Bienestar</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                            ${createHealthCard('satisfaction', 'Satisfacción')}
+                            ${createHealthCard('generalHealth', 'Salud General')}
+                            ${createHealthCard('stress', 'Estrés')}
+                            ${createHealthCard('burnout', 'Burnout')}
+                        </div>
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                             <div class="card">
                                 <h3 class="text-2xl font-bold mb-4">Modelo Demanda-Control (Karasek)</h3>
@@ -219,6 +263,7 @@
                             </div>
                         </div>
                     `;
+                    renderHealthCharts(data.healthMetrics);
                     document.getElementById('generate-conclusions-btn').addEventListener('click', () => generateConclusions(data));
                 } catch (e) {
                     DOM.dashboardContent.innerHTML = `<div class="card text-red-600">Error al procesar los datos del informe: ${e.message}</div>`;
@@ -227,6 +272,19 @@
             
             function createRiskCard(title, dimensions, bgColor, textColor) {
                 return `<div class="card"><h4 class="font-bold text-lg mb-3 ${textColor}">${title}</h4><ul class="space-y-2 text-sm">${dimensions.map(d => `<li class="flex justify-between items-center"><span>${d.name}</span><span class="font-semibold ${textColor} ${bgColor} px-2 py-1 rounded-md">${d.unfavorable.toFixed(1)}%</span></li>`).join('') || '<li>No hay dimensiones en esta categoría.</li>'}</ul></div>`;
+            }
+
+            function createHealthCard(id, title) {
+                return `<div class="card"><h4 class="text-lg font-semibold text-center mb-2">${title}</h4><canvas id="${id}-chart"></canvas></div>`;
+            }
+
+            function renderHealthCharts(metrics) {
+                Object.values(charts).forEach(chart => chart.destroy());
+                if (!metrics) return;
+                if(metrics.satisfaction && metrics.satisfaction.length) charts.satisfaction = new Chart(document.getElementById('satisfaction-chart').getContext('2d'), { type: 'pie', data: { labels: ['Muy Satisfecho', 'Satisfecho', 'Insatisfecho', 'Muy Insatisfecho'], datasets: [{ data: metrics.satisfaction, backgroundColor: ['#22c55e', '#a3e635', '#facc15', '#ef4444'] }] }, options: { responsive: true, plugins: { legend: { display: false } } } });
+                if(metrics.generalHealth && metrics.generalHealth.length) charts.generalHealth = new Chart(document.getElementById('generalHealth-chart').getContext('2d'), { type: 'pie', data: { labels: ['Excelente/Buena', 'Buena', 'Regular/Mala'], datasets: [{ data: metrics.generalHealth, backgroundColor: ['#22c55e', '#a3e635', '#ef4444'] }] }, options: { responsive: true, plugins: { legend: { display: false } } } });
+                if(metrics.stress && metrics.stress.length) charts.stress = new Chart(document.getElementById('stress-chart').getContext('2d'), { type: 'pie', data: { labels: ['Bajo (Verde)', 'Medio (Amarillo)', 'Alto (Rojo)'], datasets: [{ data: metrics.stress, backgroundColor: ['#22c55e', '#facc15', '#ef4444'] }] }, options: { responsive: true, plugins: { legend: { display: false } } } });
+                if(metrics.burnout && metrics.burnout.length) charts.burnout = new Chart(document.getElementById('burnout-chart').getContext('2d'), { type: 'pie', data: { labels: ['Bajo (Verde)', 'Medio (Amarillo)', 'Alto (Rojo)'], datasets: [{ data: metrics.burnout, backgroundColor: ['#22c55e', '#facc15', '#ef4444'] }] }, options: { responsive: true, plugins: { legend: { display: false } } } });
             }
             
             function getKarasekModelSVG(data) {
