@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Dashboards PSQCAT (con carga de archivos)</title>
+    <title>Generador de Dashboards PSQCAT (corregido)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Library for reading Excel files -->
@@ -22,16 +22,31 @@
         .card { background-color: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); padding: 1.5rem; }
         .view { display: none; }
         .view.active { display: block; }
-        #mobile-nav { transform: translateX(-100%); transition: transform 0.3s ease-in-out; }
-        #mobile-nav.open { transform: translateX(0); }
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #c026d3; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* --- FIX FOR NAVIGATION VISIBILITY --- */
+        /* By default, on small screens, the nav is hidden off-screen */
+        #sidebar {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+        }
+        /* The 'open' class, toggled by JavaScript, brings it into view */
+        #sidebar.open {
+            transform: translateX(0);
+        }
+        /* On large screens (lg), the nav is always visible and static */
+        @media (min-width: 1024px) {
+            #sidebar {
+                transform: translateX(0);
+            }
+        }
     </style>
 </head>
 <body class="text-slate-700">
 
     <!-- Sidebar Navigation -->
-    <aside id="mobile-nav" class="fixed top-0 left-0 h-full w-64 bg-slate-800 text-white p-6 overflow-y-auto z-40 lg:translate-x-0">
+    <aside id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-slate-800 text-white p-6 overflow-y-auto z-40">
         <div class="mb-10 text-center">
             <h1 class="text-2xl font-bold">CoPsoQ <span class="text-fuchsia-400">psqcat</span></h1>
             <p class="text-sm text-slate-400">Generador de Informes</p>
@@ -63,14 +78,12 @@
                 <h2 class="text-2xl font-bold mb-4 text-slate-800">Subir Nuevo Informe</h2>
                 <p class="mb-4 text-slate-600">Puedes subir un archivo Excel/PDF para pre-rellenar los datos, o pegarlos manualmente en formato JSON.</p>
                 
-                <!-- File Upload Section -->
                 <div class="mb-4 p-4 border border-dashed rounded-md">
                     <label for="file-input" class="block text-sm font-medium text-slate-700 mb-2">1. Cargar archivo (Opcional)</label>
                     <input id="file-input" type="file" accept=".xlsx, .xls, .csv, .pdf" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-fuchsia-50 file:text-fuchsia-700 hover:file:bg-fuchsia-100"/>
                     <div id="file-processing-loader" class="mt-2 hidden items-center gap-2"><div class="loader"></div><span>Procesando archivo...</span></div>
                 </div>
 
-                <!-- Manual Input Section -->
                 <div class="mb-4">
                     <label for="report-name" class="block text-sm font-medium text-slate-700 mb-1">2. Nombre del Informe (Obligatorio)</label>
                     <input id="report-name" type="text" class="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-fuchsia-500" placeholder="Ej: Informe Trimestral Q3">
@@ -99,7 +112,6 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
-        // --- App State and Configuration ---
         const firebaseConfig = {
             apiKey: "AIzaSyBsRchId8KlzJfcaKuqeOFWPJcmopCq8V8",
             authDomain: "informes-psqcat.firebaseapp.com",
@@ -113,7 +125,6 @@
         let db, auth, userId, selectedReport = null, reportsUnsubscribe = null;
         let topRisksChart = null, mainRiskChart = null;
 
-        // --- DOM Elements ---
         const views = document.querySelectorAll('.view');
         const navLinks = document.querySelectorAll('.nav-link');
         const dashboardContent = document.getElementById('dashboard-content');
@@ -125,9 +136,8 @@
         const fileInput = document.getElementById('file-input');
         const loader = document.getElementById('file-processing-loader');
         const navToggle = document.getElementById('nav-toggle');
-        const mobileNav = document.getElementById('mobile-nav');
+        const sidebar = document.getElementById('sidebar');
 
-        // --- View Management ---
         function switchView(viewId) {
             views.forEach(view => view.classList.remove('active'));
             document.getElementById(`view-${viewId}`).classList.add('active');
@@ -138,13 +148,12 @@
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 switchView(e.currentTarget.dataset.view);
-                if (window.innerWidth < 1024) mobileNav.classList.remove('open');
+                if (window.innerWidth < 1024) sidebar.classList.remove('open');
             });
         });
 
-        navToggle.addEventListener('click', () => mobileNav.classList.toggle('open'));
+        navToggle.addEventListener('click', () => sidebar.classList.toggle('open'));
 
-        // --- File Processing ---
         fileInput.addEventListener('change', handleFileSelect, false);
 
         function handleFileSelect(event) {
@@ -177,7 +186,6 @@
                 const worksheet = workbook.Sheets[firstSheetName];
                 const jsonData = XLSX.utils.sheet_to_json(worksheet);
                 
-                // Attempt to convert to PSQCAT format
                 const psqcatData = {
                     metadata: { company: reportNameInput.value || "Informe Excel", date: new Date().toLocaleDateString(), participants: 100, totalSurveyed: 100 },
                     dimensions: jsonData.map(row => ({
@@ -207,17 +215,14 @@
                     fullText += textContent.items.map(item => item.str).join(' ');
                 }
                 
-                // Experimental parsing based on "idiap 2024.pdf" structure
                 const dimensions = [];
                 const regex = /([A-Za-zÀ-ÿ\s\.\/]+)\s+([0-9,.]+)\s+([0-9,.]+)\s+([0-9,.]+)/g;
                 let match;
                 const riskTableText = fullText.substring(fullText.indexOf("Taula 27:"), fullText.indexOf("Vermell: tercil"));
                 
                 while ((match = regex.exec(riskTableText)) !== null) {
-                     // Clean up name and check if it's a valid dimension
                     let name = match[1].trim().replace(/\s+/g, ' ');
                     if (name.includes("MÉS PROBLEMÀTIQUES") || name.includes("MENYS PROBLEMÀTIQUES") || name.length < 5 || name.length > 50) continue;
-
                     dimensions.push({
                         name: name,
                         unfavorable: parseFloat(match[2].replace(',', '.')),
@@ -236,7 +241,6 @@
                 } else {
                     renderNotification('No se pudo extraer una tabla de dimensiones del PDF. La estructura puede no ser reconocida.', 'error');
                 }
-
             } catch(e) {
                 renderNotification('Error procesando el archivo PDF: ' + e.message, 'error');
             } finally {
@@ -244,7 +248,6 @@
             }
         }
 
-        // --- Rendering Functions ---
         function renderNotification(message, type = 'success') {
             const color = type === 'success' ? 'green' : 'red';
             notificationArea.innerHTML = `<div class="bg-${color}-100 border border-${color}-400 text-${color}-700 px-4 py-3 rounded-md">${message}</div>`;
@@ -312,7 +315,6 @@
             });
         }
 
-        // --- Firebase Logic ---
         async function saveReport() {
             const name = reportNameInput.value.trim();
             const json = jsonInput.value.trim();
@@ -358,7 +360,6 @@
             });
         }
 
-        // --- Initialization ---
         function init() {
             try {
                 const app = initializeApp(firebaseConfig);
