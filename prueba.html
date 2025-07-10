@@ -64,269 +64,272 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBsRchId8KlzJfcaKuqeOFWPJcmopCq8V8",
-            authDomain: "informes-psqcat.firebaseapp.com",
-            projectId: "informes-psqcat",
-            storageBucket: "informes-psqcat.appspot.com",
-            messagingSenderId: "864424880028",
-            appId: "1:864424880028:web:2b27a50e28c3d4a1368a59",
-            measurementId: "G-30XQTHJG14"
-        };
+        // This function will run once the entire HTML document is loaded and parsed.
+        document.addEventListener('DOMContentLoaded', () => {
+            const firebaseConfig = {
+                apiKey: "AIzaSyBsRchId8KlzJfcaKuqeOFWPJcmopCq8V8",
+                authDomain: "informes-psqcat.firebaseapp.com",
+                projectId: "informes-psqcat",
+                storageBucket: "informes-psqcat.appspot.com",
+                messagingSenderId: "864424880028",
+                appId: "1:864424880028:web:2b27a50e28c3d4a1368a59",
+                measurementId: "G-30XQTHJG14"
+            };
 
-        let db, auth, userId, selectedReport = null, reportsUnsubscribe = null;
-        const charts = {};
+            let db, auth, userId, selectedReport = null, reportsUnsubscribe = null;
+            const charts = {};
 
-        const DOM = {
-            views: document.querySelectorAll('.view'),
-            navLinks: document.querySelectorAll('.nav-link'),
-            dashboardContent: document.getElementById('dashboard-content'),
-            reportsList: document.getElementById('reports-list'),
-            saveReportBtn: document.getElementById('save-report-btn'),
-            reportNameInput: document.getElementById('report-name'),
-            jsonInput: document.getElementById('json-input'),
-            notificationArea: document.getElementById('notification-area'),
-            rawDataInput: document.getElementById('raw-data-input'),
-            translateBtn: document.getElementById('translate-btn'),
-            navToggle: document.getElementById('nav-toggle'),
-            sidebar: document.getElementById('sidebar')
-        };
+            // Define DOM elements inside the listener to ensure they exist.
+            const DOM = {
+                views: document.querySelectorAll('.view'),
+                navLinks: document.querySelectorAll('.nav-link'),
+                dashboardContent: document.getElementById('dashboard-content'),
+                reportsList: document.getElementById('reports-list'),
+                saveReportBtn: document.getElementById('save-report-btn'),
+                reportNameInput: document.getElementById('report-name'),
+                jsonInput: document.getElementById('json-input'),
+                notificationArea: document.getElementById('notification-area'),
+                rawDataInput: document.getElementById('raw-data-input'),
+                translateBtn: document.getElementById('translate-btn'),
+                navToggle: document.getElementById('nav-toggle'),
+                sidebar: document.getElementById('sidebar')
+            };
 
-        function switchView(viewId) {
-            DOM.views.forEach(view => view.classList.remove('active'));
-            document.getElementById(`view-${viewId}`).classList.add('active');
-            if (viewId === 'dashboard') renderDashboard();
-        }
+            function switchView(viewId) {
+                DOM.views.forEach(view => view.classList.remove('active'));
+                document.getElementById(`view-${viewId}`).classList.add('active');
+                if (viewId === 'dashboard') renderDashboard();
+            }
 
-        DOM.navLinks.forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                switchView(e.currentTarget.dataset.view);
-                if (window.innerWidth < 1024) DOM.sidebar.classList.remove('open');
+            // Attach event listeners
+            DOM.navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    switchView(e.currentTarget.dataset.view);
+                    if (window.innerWidth < 1024) DOM.sidebar.classList.remove('open');
+                });
             });
-        });
-        DOM.navToggle.addEventListener('click', () => DOM.sidebar.classList.toggle('open'));
-        DOM.translateBtn.addEventListener('click', translatePastedData);
-        
-        function translatePastedData() {
-            const rawText = DOM.rawDataInput.value;
-            if (!rawText.trim()) {
-                alert("Por favor, pega el texto de la tabla en el cuadro.");
-                return;
-            }
+            DOM.navToggle.addEventListener('click', () => DOM.sidebar.classList.toggle('open'));
+            DOM.translateBtn.addEventListener('click', translatePastedData);
+            DOM.saveReportBtn.addEventListener('click', saveReport);
             
-            try {
-                const dimensions = parseDimensions(rawText);
-                if (dimensions.length < 10) {
-                    throw new Error("No se pudieron extraer suficientes dimensiones. Asegúrate de copiar toda la tabla.");
+            function translatePastedData() {
+                const rawText = DOM.rawDataInput.value;
+                if (!rawText.trim()) {
+                    alert("Por favor, pega el texto de la tabla en el cuadro.");
+                    return;
                 }
-
-                const psqcatData = {
-                    metadata: { company: "IDIAP 2024 (Datos Pegados)", date: new Date().toLocaleDateString(), participants: 93, totalSurveyed: 93 },
-                    dimensions: dimensions,
-                    healthMetrics: {},
-                    conclusions: { summary: "Datos generados desde el asistente. Genere el análisis para obtener conclusiones." }
-                };
                 
-                DOM.jsonInput.value = JSON.stringify(psqcatData, null, 2);
-                renderNotification('Datos traducidos a JSON con éxito. Ahora puedes nombrar y guardar el informe.', 'success');
-                switchView('data-input');
-            } catch (e) {
-                renderNotification('Error al traducir los datos: ' + e.message, 'error');
-            }
-        }
+                try {
+                    const dimensions = parseDimensions(rawText);
+                    if (dimensions.length < 10) {
+                        throw new Error("No se pudieron extraer suficientes dimensiones. Asegúrate de copiar toda la tabla.");
+                    }
 
-        function parseDimensions(text) {
-            const dimensions = [];
-            const lines = text.split('\n').filter(line => line.trim() !== '');
-            
-            lines.forEach(line => {
-                // Regex to find a name followed by three numbers (with comma or dot)
-                const match = line.match(/^([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s\/'.]+?)\s+([\d,.]+)\s+([\d,.]+)\s+([\d,.]+)$/);
-                if (match) {
-                    let name = match[1].trim()
-                        .replace(/MÉS PROBLEMÀTIQUES|MENYS PROBLEMÀTIQUES|O FAVORABLES|Dimensió/gi, '')
-                        .trim();
+                    const psqcatData = {
+                        metadata: { company: "IDIAP 2024 (Datos Pegados)", date: new Date().toLocaleDateString(), participants: 93, totalSurveyed: 93 },
+                        dimensions: dimensions,
+                        healthMetrics: {},
+                        conclusions: { summary: "Datos generados desde el asistente. Genere el análisis para obtener conclusiones." }
+                    };
                     
-                    if (name && name.length > 4) {
-                        dimensions.push({
-                            name: name,
-                            unfavorable: parseFloat(String(match[2]).replace(',', '.')),
-                            intermediate: parseFloat(String(match[3]).replace(',', '.')),
-                            favorable: parseFloat(String(match[4]).replace(',', '.'))
-                        });
+                    DOM.jsonInput.value = JSON.stringify(psqcatData, null, 2);
+                    renderNotification('Datos traducidos a JSON con éxito. Ahora puedes nombrar y guardar el informe.', 'success');
+                    switchView('data-input');
+                } catch (e) {
+                    renderNotification('Error al traducir los datos: ' + e.message, 'error');
+                }
+            }
+
+            function parseDimensions(text) {
+                const dimensions = [];
+                const lines = text.split('\n').filter(line => line.trim() !== '');
+                
+                lines.forEach(line => {
+                    const match = line.match(/^([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s\/'.]+?)\s+([\d,.]+)\s+([\d,.]+)\s+([\d,.]+)$/);
+                    if (match) {
+                        let name = match[1].trim()
+                            .replace(/MÉS PROBLEMÀTIQUES|MENYS PROBLEMÀTIQUES|O FAVORABLES|Dimensió/gi, '')
+                            .trim();
+                        
+                        if (name && name.length > 4) {
+                            dimensions.push({
+                                name: name,
+                                unfavorable: parseFloat(String(match[2]).replace(',', '.')),
+                                intermediate: parseFloat(String(match[3]).replace(',', '.')),
+                                favorable: parseFloat(String(match[4]).replace(',', '.'))
+                            });
+                        }
+                    }
+                });
+                return dimensions;
+            }
+
+            function renderNotification(message, type = 'success') {
+                const color = type === 'success' ? 'green' : 'red';
+                DOM.notificationArea.innerHTML = `<div class="bg-${color}-100 border border-${color}-400 text-${color}-700 px-4 py-3 rounded-md">${message}</div>`;
+                setTimeout(() => DOM.notificationArea.innerHTML = '', 5000);
+            }
+
+            function renderReportsList(reports) {
+                DOM.reportsList.innerHTML = reports.length === 0 
+                    ? '<p>No has subido ningún informe.</p>'
+                    : reports.map(report => `
+                        <li class="flex items-center justify-between p-3 bg-slate-50 rounded-md">
+                            <span class="font-medium">${report.name}</span>
+                            <div class="flex items-center gap-2">
+                                <button data-report-id="${report.id}" class="view-dashboard-btn text-sm bg-sky-500 text-white py-1 px-3 rounded-md hover:bg-sky-600">Ver</button>
+                                <button data-report-id="${report.id}" class="delete-report-btn text-sm bg-red-500 text-white p-2 rounded-md hover:bg-red-600">X</button>
+                            </div>
+                        </li>`).join('');
+            }
+
+            function renderDashboard() {
+                if (!selectedReport) {
+                    DOM.dashboardContent.innerHTML = `<div class="card text-center"><h2 class="text-2xl font-bold">Bienvenido</h2><p class="mt-2">No hay ningún informe seleccionado. Ve a "Mis Informes" para elegir uno.</p></div>`;
+                    return;
+                }
+                try {
+                    const data = JSON.parse(selectedReport.data);
+                    const problematic = data.dimensions.filter(d => d.unfavorable >= 50);
+                    const improvable = data.dimensions.filter(d => d.unfavorable >= 33.3 && d.unfavorable < 50);
+                    const favorable = data.dimensions.filter(d => d.unfavorable < 33.3);
+
+                    DOM.dashboardContent.innerHTML = `
+                        <h2 class="text-3xl font-bold mb-2">Dashboard: <span class="text-fuchsia-600">${selectedReport.name}</span></h2>
+                        <p class="text-slate-500 mb-6">Empresa: ${data.metadata.company} - Fecha: ${data.metadata.date}</p>
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                            ${createRiskCard("Exposiciones Problemáticas", problematic, 'bg-red-100', 'text-red-700')}
+                            ${createRiskCard("Exposiciones Mejorables", improvable, 'bg-yellow-100', 'text-yellow-700')}
+                            ${createRiskCard("Exposiciones Favorables", favorable, 'bg-green-100', 'text-green-700')}
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                            <div class="card">
+                                <h3 class="text-2xl font-bold mb-4">Modelo Demanda-Control (Karasek)</h3>
+                                <svg viewBox="0 0 400 300" class="w-full h-auto">${getKarasekModelSVG(data)}</svg>
+                            </div>
+                            <div class="card">
+                                 <h3 class="text-2xl font-bold mb-4">Análisis y Recomendaciones de IA</h3>
+                                <div id="conclusions-content" class="text-slate-600 space-y-2 prose">
+                                   <p>Haz clic en el botón para generar un análisis y recomendaciones basadas en los datos de este informe.</p>
+                                </div>
+                                <button id="generate-conclusions-btn" class="mt-4 bg-indigo-600 text-white font-bold py-2 px-4 rounded-md hover:bg-indigo-700">
+                                    Generar Análisis con IA
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById('generate-conclusions-btn').addEventListener('click', () => generateConclusions(data));
+                } catch (e) {
+                    DOM.dashboardContent.innerHTML = `<div class="card text-red-600">Error al procesar los datos del informe: ${e.message}</div>`;
+                }
+            }
+            
+            function createRiskCard(title, dimensions, bgColor, textColor) {
+                return `<div class="card"><h4 class="font-bold text-lg mb-3 ${textColor}">${title}</h4><ul class="space-y-2 text-sm">${dimensions.map(d => `<li class="flex justify-between items-center"><span>${d.name}</span><span class="font-semibold ${textColor} ${bgColor} px-2 py-1 rounded-md">${d.unfavorable.toFixed(1)}%</span></li>`).join('') || '<li>No hay dimensiones en esta categoría.</li>'}</ul></div>`;
+            }
+            
+            function getKarasekModelSVG(data) {
+                const demanda = (data.dimensions.find(d => d.name.toLowerCase().includes('exigències quantitatives'))?.unfavorable || 0) + (data.dimensions.find(d => d.name.toLowerCase().includes('ritme de treball'))?.unfavorable || 0) / 2;
+                const control = (data.dimensions.find(d => d.name.toLowerCase().includes('influència'))?.favorable || 0) + (data.dimensions.find(d => d.name.toLowerCase().includes('possibilitats de desenvolupament'))?.favorable || 0) / 2;
+                
+                let x = 300, y = 80; // Default: Alta Tensión (Alta Demanda, Bajo Control)
+                if (demanda < 50 && control >= 50) { x = 100; y = 220; } // Baja Tensión (Baja Demanda, Alto Control)
+                if (demanda >= 50 && control >= 50) { x = 100; y = 80; } // Activo (Alta Demanda, Alto Control)
+                if (demanda < 50 && control < 50) { x = 300; y = 220; } // Pasivo (Baja Demanda, Bajo Control)
+
+                return `<g fill="none" stroke="#334155" stroke-width="1"><path d="M200 0 V300 M0 150 H400"/></g><g text-anchor="middle" font-size="14" font-family="Inter, sans-serif"><text x="100" y="80" fill="#059669">Trabajo Activo</text><text x="300" y="220" fill="#dc2626">Trabajo Pasivo</text><text x="300" y="80" fill="#ef4444">Alta Tensión</text><text x="100" y="220" fill="#65a30d">Baja Tensión</text><text x="200" y="140" font-weight="bold">CONTROL</text><text x="30" y="155" transform="rotate(-90 30 155)" font-weight="bold">DEMANDA</text><g stroke="#c026d3" stroke-width="2" fill="#c026d3" fill-opacity="0.2"><rect x="${x-40}" y="${y-30}" width="80" height="60" rx="10"/><text x="${x}" y="${y+5}" fill="#c026d3" font-size="12" font-weight="bold">Equipo</text></g></g>`;
+            }
+            
+            async function generateConclusions(data) {
+                const conclusionsContent = document.getElementById('conclusions-content');
+                conclusionsContent.innerHTML = '<div class="flex items-center gap-2"><div class="loader"></div><span>Generando análisis... Por favor, espera.</span></div>';
+
+                const dimensionsText = data.dimensions.map(d => `- ${d.name}: ${d.unfavorable}% desfavorable`).join('\n');
+                const prompt = `Eres un experto consultor en prevención de riesgos laborales y salud organizacional, especializado en el método CoPsoQ PSQCAT y el modelo Demanda-Control de Karasek. Analiza los siguientes datos de un informe para la empresa ${data.metadata.company}. Los datos son:\n\n**DATOS DE RIESGOS PSICOSOCIALES (Porcentaje de exposición desfavorable):**\n${dimensionsText}\n\nBasado en este conjunto de datos, redacta un análisis profesional y accionable en español. La estructura debe ser la siguiente:\n\n**1. Análisis según el Modelo Demanda-Control (Karasek):**\nIndica en qué cuadrante se sitúa el equipo (ej. "Alta Tensión", "Trabajo Activo", etc.) basándote en las puntuaciones de exigencias (demanda) y control (influencia, desarrollo). Explica qué implica esta situación para el equipo.\n\n**2. Áreas Críticas de Intervención (Factores de Riesgo Altos):**\nLista las dimensiones con los porcentajes de exposición desfavorable más altos (superiores al 50%). Para cada una, explica brevemente qué significa este riesgo en la práctica.\n\n**3. Puntos Fuertes y Factores Protectores:**\nLista las dimensiones con mejores resultados (más favorables). Explica por qué son importantes y cómo pueden ser usados como palanca para mejorar otras áreas.\n\n**4. Plan de Acción Recomendado:**\nUna sección final con recomendaciones claras y específicas. Para las 2-3 áreas más críticas, propón 1-2 acciones concretas y prácticas que la dirección puede implementar.\n\nEl tono debe ser constructivo, profesional y orientado a soluciones. Formatea la respuesta usando Markdown con títulos (##) y listas con guiones (-).`;
+
+                try {
+                    const apiKey = ""; // Canvas will provide the key
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                    const payload = { contents: [{ parts: [{ text: prompt }] }] };
+
+                    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (!response.ok) throw new Error(`Error de la API: ${response.statusText}`);
+
+                    const result = await response.json();
+                    const analysisText = result.candidates[0].content.parts[0].text;
+                    
+                    conclusionsContent.innerHTML = analysisText
+                        .replace(/## (.*?)\n/g, '<h4 class="font-bold text-lg mt-4 mb-2">$1</h4>')
+                        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                        .replace(/- (.*?)(?=\n- |\n<br>|$)/g, '<li class="ml-4 list-disc">$1</li>')
+                        .replace(/\n/g, '<br>');
+
+                } catch (error) {
+                    conclusionsContent.innerHTML = `<p class="text-red-600">Error al generar el análisis: ${error.message}</p>`;
+                }
+            }
+
+            async function saveReport() {
+                const name = DOM.reportNameInput.value.trim();
+                const json = DOM.jsonInput.value.trim();
+                if (!name) { renderNotification('Introduce un nombre para el informe.', 'error'); return; }
+                if (!userId) { renderNotification('No se ha podido autenticar.', 'error'); return; }
+                try {
+                    const parsedData = JSON.parse(json);
+                    if (!parsedData.metadata || !parsedData.dimensions) throw new Error("Formato JSON inválido.");
+                    await addDoc(collection(db, `users/${userId}/reports`), { name, data: json, createdAt: new Date() });
+                    renderNotification(`Informe "${name}" guardado.`, 'success');
+                    DOM.reportNameInput.value = '';
+                    DOM.jsonInput.value = '';
+                } catch (e) {
+                    renderNotification(`Error: ${e.message}`, 'error');
+                }
+            }
+
+            async function deleteReport(reportId) {
+                if (!db || !userId) return;
+                if (confirm("¿Seguro que quieres eliminar este informe?")) {
+                    await deleteDoc(doc(db, `users/${userId}/reports`, reportId));
+                    if (selectedReport && selectedReport.id === reportId) {
+                        selectedReport = null;
+                        renderDashboard();
                     }
                 }
-            });
-            return dimensions;
-        }
-
-        function renderNotification(message, type = 'success') {
-            const color = type === 'success' ? 'green' : 'red';
-            DOM.notificationArea.innerHTML = `<div class="bg-${color}-100 border border-${color}-400 text-${color}-700 px-4 py-3 rounded-md">${message}</div>`;
-            setTimeout(() => DOM.notificationArea.innerHTML = '', 5000);
-        }
-
-        function renderReportsList(reports) {
-            DOM.reportsList.innerHTML = reports.length === 0 
-                ? '<p>No has subido ningún informe.</p>'
-                : reports.map(report => `
-                    <li class="flex items-center justify-between p-3 bg-slate-50 rounded-md">
-                        <span class="font-medium">${report.name}</span>
-                        <div class="flex items-center gap-2">
-                            <button data-report-id="${report.id}" class="view-dashboard-btn text-sm bg-sky-500 text-white py-1 px-3 rounded-md hover:bg-sky-600">Ver</button>
-                            <button data-report-id="${report.id}" class="delete-report-btn text-sm bg-red-500 text-white p-2 rounded-md hover:bg-red-600">X</button>
-                        </div>
-                    </li>`).join('');
-        }
-
-        function renderDashboard() {
-            if (!selectedReport) {
-                DOM.dashboardContent.innerHTML = `<div class="card text-center"><h2 class="text-2xl font-bold">Bienvenido</h2><p class="mt-2">No hay ningún informe seleccionado. Ve a "Mis Informes" para elegir uno.</p></div>`;
-                return;
             }
-            try {
-                const data = JSON.parse(selectedReport.data);
-                const problematic = data.dimensions.filter(d => d.unfavorable >= 50);
-                const improvable = data.dimensions.filter(d => d.unfavorable >= 33.3 && d.unfavorable < 50);
-                const favorable = data.dimensions.filter(d => d.unfavorable < 33.3);
 
-                DOM.dashboardContent.innerHTML = `
-                    <h2 class="text-3xl font-bold mb-2">Dashboard: <span class="text-fuchsia-600">${selectedReport.name}</span></h2>
-                    <p class="text-slate-500 mb-6">Empresa: ${data.metadata.company} - Fecha: ${data.metadata.date}</p>
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                        ${createRiskCard("Exposiciones Problemáticas", problematic, 'bg-red-100', 'text-red-700')}
-                        ${createRiskCard("Exposiciones Mejorables", improvable, 'bg-yellow-100', 'text-yellow-700')}
-                        ${createRiskCard("Exposiciones Favorables", favorable, 'bg-green-100', 'text-green-700')}
-                    </div>
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                        <div class="card">
-                            <h3 class="text-2xl font-bold mb-4">Modelo Demanda-Control (Karasek)</h3>
-                            <svg viewBox="0 0 400 300" class="w-full h-auto">${getKarasekModelSVG(data)}</svg>
-                        </div>
-                        <div class="card">
-                             <h3 class="text-2xl font-bold mb-4">Análisis y Recomendaciones de IA</h3>
-                            <div id="conclusions-content" class="text-slate-600 space-y-2 prose">
-                               <p>Haz clic en el botón para generar un análisis y recomendaciones basadas en los datos de este informe.</p>
-                            </div>
-                            <button id="generate-conclusions-btn" class="mt-4 bg-indigo-600 text-white font-bold py-2 px-4 rounded-md hover:bg-indigo-700">
-                                Generar Análisis con IA
-                            </button>
-                        </div>
-                    </div>
-                `;
-                document.getElementById('generate-conclusions-btn').addEventListener('click', () => generateConclusions(data));
-            } catch (e) {
-                DOM.dashboardContent.innerHTML = `<div class="card text-red-600">Error al procesar los datos del informe: ${e.message}</div>`;
+            function listenToReports() {
+                if (reportsUnsubscribe) reportsUnsubscribe();
+                const q = query(collection(db, `users/${userId}/reports`), orderBy("createdAt", "desc"));
+                reportsUnsubscribe = onSnapshot(q, (snapshot) => {
+                    const reports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    renderReportsList(reports);
+                    document.querySelectorAll('.view-dashboard-btn').forEach(btn => btn.onclick = (e) => {
+                        selectedReport = reports.find(r => r.id === e.currentTarget.dataset.reportId);
+                        switchView('dashboard');
+                    });
+                    document.querySelectorAll('.delete-report-btn').forEach(btn => btn.onclick = (e) => deleteReport(e.currentTarget.dataset.reportId));
+                });
             }
-        }
-        
-        function createRiskCard(title, dimensions, bgColor, textColor) {
-            return `<div class="card"><h4 class="font-bold text-lg mb-3 ${textColor}">${title}</h4><ul class="space-y-2 text-sm">${dimensions.map(d => `<li class="flex justify-between items-center"><span>${d.name}</span><span class="font-semibold ${textColor} ${bgColor} px-2 py-1 rounded-md">${d.unfavorable.toFixed(1)}%</span></li>`).join('') || '<li>No hay dimensiones en esta categoría.</li>'}</ul></div>`;
-        }
-        
-        function getKarasekModelSVG(data) {
-            const demanda = (data.dimensions.find(d => d.name.toLowerCase().includes('exigències quantitatives'))?.unfavorable || 0) + (data.dimensions.find(d => d.name.toLowerCase().includes('ritme de treball'))?.unfavorable || 0) / 2;
-            const control = (data.dimensions.find(d => d.name.toLowerCase().includes('influència'))?.favorable || 0) + (data.dimensions.find(d => d.name.toLowerCase().includes('possibilitats de desenvolupament'))?.favorable || 0) / 2;
-            
-            let x = 300, y = 80; // Default: Alta Tensión (Alta Demanda, Bajo Control)
-            if (demanda < 50 && control >= 50) { x = 100; y = 220; } // Baja Tensión (Baja Demanda, Alto Control)
-            if (demanda >= 50 && control >= 50) { x = 100; y = 80; } // Activo (Alta Demanda, Alto Control)
-            if (demanda < 50 && control < 50) { x = 300; y = 220; } // Pasivo (Baja Demanda, Bajo Control)
 
-            return `<g fill="none" stroke="#334155" stroke-width="1"><path d="M200 0 V300 M0 150 H400"/></g><g text-anchor="middle" font-size="14" font-family="Inter, sans-serif"><text x="100" y="80" fill="#059669">Trabajo Activo</text><text x="300" y="220" fill="#dc2626">Trabajo Pasivo</text><text x="300" y="80" fill="#ef4444">Alta Tensión</text><text x="100" y="220" fill="#65a30d">Baja Tensión</text><text x="200" y="140" font-weight="bold">CONTROL</text><text x="30" y="155" transform="rotate(-90 30 155)" font-weight="bold">DEMANDA</text><g stroke="#c026d3" stroke-width="2" fill="#c026d3" fill-opacity="0.2"><rect x="${x-40}" y="${y-30}" width="80" height="60" rx="10"/><text x="${x}" y="${y+5}" fill="#c026d3" font-size="12" font-weight="bold">Equipo</text></g></g>`;
-        }
-        
-        async function generateConclusions(data) {
-            const conclusionsContent = document.getElementById('conclusions-content');
-            conclusionsContent.innerHTML = '<div class="flex items-center gap-2"><div class="loader"></div><span>Generando análisis... Por favor, espera.</span></div>';
-
-            const dimensionsText = data.dimensions.map(d => `- ${d.name}: ${d.unfavorable}% desfavorable`).join('\n');
-            const prompt = `Eres un experto consultor en prevención de riesgos laborales y salud organizacional, especializado en el método CoPsoQ PSQCAT y el modelo Demanda-Control de Karasek. Analiza los siguientes datos de un informe para la empresa ${data.metadata.company}. Los datos son:\n\n**DATOS DE RIESGOS PSICOSOCIALES (Porcentaje de exposición desfavorable):**\n${dimensionsText}\n\nBasado en este conjunto de datos, redacta un análisis profesional y accionable en español. La estructura debe ser la siguiente:\n\n**1. Análisis según el Modelo Demanda-Control (Karasek):**\nIndica en qué cuadrante se sitúa el equipo (ej. "Alta Tensión", "Trabajo Activo", etc.) basándote en las puntuaciones de exigencias (demanda) y control (influencia, desarrollo). Explica qué implica esta situación para el equipo.\n\n**2. Áreas Críticas de Intervención (Factores de Riesgo Altos):**\nLista las dimensiones con los porcentajes de exposición desfavorable más altos (superiores al 50%). Para cada una, explica brevemente qué significa este riesgo en la práctica.\n\n**3. Puntos Fuertes y Factores Protectores:**\nLista las dimensiones con mejores resultados (más favorables). Explica por qué son importantes y cómo pueden ser usados como palanca para mejorar otras áreas.\n\n**4. Plan de Acción Recomendado:**\nUna sección final con recomendaciones claras y específicas. Para las 2-3 áreas más críticas, propón 1-2 acciones concretas y prácticas que la dirección puede implementar.\n\nEl tono debe ser constructivo, profesional y orientado a soluciones. Formatea la respuesta usando Markdown con títulos (##) y listas con guiones (-).`;
-
-            try {
-                const apiKey = ""; // Canvas will provide the key
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-                const payload = { contents: [{ parts: [{ text: prompt }] }] };
-
-                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                if (!response.ok) throw new Error(`Error de la API: ${response.statusText}`);
-
-                const result = await response.json();
-                const analysisText = result.candidates[0].content.parts[0].text;
-                
-                conclusionsContent.innerHTML = analysisText
-                    .replace(/## (.*?)\n/g, '<h4 class="font-bold text-lg mt-4 mb-2">$1</h4>')
-                    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-                    .replace(/- (.*?)(?=\n- |\n<br>|$)/g, '<li class="ml-4 list-disc">$1</li>')
-                    .replace(/\n/g, '<br>');
-
-            } catch (error) {
-                conclusionsContent.innerHTML = `<p class="text-red-600">Error al generar el análisis: ${error.message}</p>`;
-            }
-        }
-
-        async function saveReport() {
-            const name = DOM.reportNameInput.value.trim();
-            const json = DOM.jsonInput.value.trim();
-            if (!name) { renderNotification('Introduce un nombre para el informe.', 'error'); return; }
-            if (!userId) { renderNotification('No se ha podido autenticar.', 'error'); return; }
-            try {
-                const parsedData = JSON.parse(json);
-                if (!parsedData.metadata || !parsedData.dimensions) throw new Error("Formato JSON inválido.");
-                await addDoc(collection(db, `users/${userId}/reports`), { name, data: json, createdAt: new Date() });
-                renderNotification(`Informe "${name}" guardado.`, 'success');
-                DOM.reportNameInput.value = '';
-                DOM.jsonInput.value = '';
-                DOM.fileInput.value = '';
-            } catch (e) {
-                renderNotification(`Error: ${e.message}`, 'error');
-            }
-        }
-
-        async function deleteReport(reportId) {
-            if (!db || !userId) return;
-            if (confirm("¿Seguro que quieres eliminar este informe?")) {
-                await deleteDoc(doc(db, `users/${userId}/reports`, reportId));
-                if (selectedReport && selectedReport.id === reportId) {
-                    selectedReport = null;
+            function init() {
+                try {
+                    const app = initializeApp(firebaseConfig);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+                    onAuthStateChanged(auth, user => {
+                        if (user) { userId = user.uid; listenToReports(); } 
+                        else { signInAnonymously(auth).catch(e => console.error("Sign-in failed:", e)); }
+                    });
                     renderDashboard();
+                } catch (error) {
+                    console.error("Firebase init failed:", error);
+                    DOM.dashboardContent.innerHTML = `<div class="card text-red-600">Error de inicialización.</div>`;
                 }
             }
-        }
 
-        function listenToReports() {
-            if (reportsUnsubscribe) reportsUnsubscribe();
-            const q = query(collection(db, `users/${userId}/reports`), orderBy("createdAt", "desc"));
-            reportsUnsubscribe = onSnapshot(q, (snapshot) => {
-                const reports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderReportsList(reports);
-                document.querySelectorAll('.view-dashboard-btn').forEach(btn => btn.onclick = (e) => {
-                    selectedReport = reports.find(r => r.id === e.currentTarget.dataset.reportId);
-                    switchView('dashboard');
-                });
-                document.querySelectorAll('.delete-report-btn').forEach(btn => btn.onclick = (e) => deleteReport(e.currentTarget.dataset.reportId));
-            });
-        }
-
-        function init() {
-            try {
-                const app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-                onAuthStateChanged(auth, user => {
-                    if (user) { userId = user.uid; listenToReports(); } 
-                    else { signInAnonymously(auth).catch(e => console.error("Sign-in failed:", e)); }
-                });
-                DOM.saveReportBtn.addEventListener('click', saveReport);
-                renderDashboard();
-            } catch (error) {
-                console.error("Firebase init failed:", error);
-                DOM.dashboardContent.innerHTML = `<div class="card text-red-600">Error de inicialización.</div>`;
-            }
-        }
-
-        init();
+            init();
+        });
     </script>
 </body>
 </html>
