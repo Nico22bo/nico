@@ -132,8 +132,8 @@
                     conclusions: { summary: "Datos extraídos de PDF. Genere el análisis para obtener conclusiones." }
                 };
 
-                if (psqcatData.dimensions.length === 0) {
-                    throw new Error("No se pudieron extraer las dimensiones de la Tabla 27. Verifique el formato del PDF.");
+                if (psqcatData.dimensions.length < 10) { // Check if parsing was successful
+                    throw new Error("No se pudieron extraer suficientes dimensiones de la Tabla 27. Verifique el formato del PDF.");
                 }
 
                 DOM.jsonInput.value = JSON.stringify(psqcatData, null, 2);
@@ -148,13 +148,13 @@
         function parseMetadata(text) {
              const companyMatch = text.match(/RISCOS PSICOSOCIALS A ([\w\s\d]+)/);
              const dateMatch = text.match(/data: (\d{1,2} de [a-z]+ de \d{4})/);
-             const participantsMatch = text.match(/contestat (\d+) treballadors/);
-             const totalSurveyedMatch = participantsMatch;
+             const participantsMatch = text.match(/van contestar (\d+) treballadors/);
+             const totalSurveyedMatch = text.match(/dels (\d+) a qui es va proporcionar/);
              return {
                 company: companyMatch ? companyMatch[1].trim() : "Empresa Desconocida",
                 date: dateMatch ? dateMatch[1] : new Date().toLocaleDateString(),
                 participants: participantsMatch ? parseInt(participantsMatch[1]) : 0,
-                totalSurveyed: totalSurveyedMatch ? parseInt(totalSurveyedMatch[1]) : 0
+                totalSurveyed: totalSurveyedMatch ? parseInt(totalSurveyedMatch[1]) : (participantsMatch ? parseInt(participantsMatch[1]) : 0)
              };
         }
 
@@ -165,28 +165,17 @@
             const startIndex = text.indexOf(startMarker);
             const endIndex = text.indexOf(endMarker);
 
-            if (startIndex === -1 || endIndex === -1) {
-                console.error("Could not find the dimension table markers in the PDF text.");
-                return [];
-            }
+            if (startIndex === -1 || endIndex === -1) return [];
 
-            const tableText = text.substring(startIndex, endIndex);
-            
-            // Regex to find dimension names and their three corresponding values
-            const regex = /([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s\/']+?)\s+([\d,\.]+)\s+([\d,\.]+)\s+([\d,\.]+)/g;
+            let tableText = text.substring(startIndex, endIndex);
+            tableText = tableText.replace(/MÉS PROBLEMÀTIQUES|MENYS PROBLEMÀTIQUES|O FAVORABLES|Dimensió|Taula 27:.*?Més favorable/g, ' ').trim();
+
+            const regex = /([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s\/'.]+?)\s+([\d,.]+)\s+([\d,.]+)\s+([\d,.]+)/g;
             
             let match;
             while ((match = regex.exec(tableText)) !== null) {
-                let name = match[1].trim()
-                    .replace('MÉS PROBLEMÀTIQUES', '')
-                    .replace('MENYS PROBLEMÀTIQUES', '')
-                    .replace('O FAVORABLES', '')
-                    .replace('Dimensió', '')
-                    .trim();
-                
-                if (name.toLowerCase().includes('més desfavorable')) continue;
-
-                if (name && name.length > 4) {
+                let name = match[1].trim();
+                if (name && name.length > 4 && isNaN(name)) {
                     dimensions.push({
                         name: name,
                         unfavorable: parseFloat(String(match[2]).replace(',', '.')),
@@ -236,14 +225,20 @@
                         ${createRiskCard("Exposiciones Mejorables", improvable, 'bg-yellow-100', 'text-yellow-700')}
                         ${createRiskCard("Exposiciones Favorables", favorable, 'bg-green-100', 'text-green-700')}
                     </div>
-                    <h3 class="text-2xl font-bold mb-4">Análisis y Recomendaciones de IA</h3>
-                    <div class="card">
-                        <div id="conclusions-content" class="text-slate-600 space-y-2 prose">
-                           <p>Haz clic en el botón para generar un análisis y recomendaciones basadas en los datos de este informe.</p>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                        <div class="card">
+                            <h3 class="text-2xl font-bold mb-4">Modelo Demanda-Control (Karasek)</h3>
+                            <svg viewBox="0 0 400 300" class="w-full h-auto">${getKarasekModelSVG(data)}</svg>
                         </div>
-                        <button id="generate-conclusions-btn" class="mt-4 bg-indigo-600 text-white font-bold py-2 px-4 rounded-md hover:bg-indigo-700">
-                            Generar Análisis con IA
-                        </button>
+                        <div class="card">
+                             <h3 class="text-2xl font-bold mb-4">Análisis y Recomendaciones de IA</h3>
+                            <div id="conclusions-content" class="text-slate-600 space-y-2 prose">
+                               <p>Haz clic en el botón para generar un análisis y recomendaciones basadas en los datos de este informe.</p>
+                            </div>
+                            <button id="generate-conclusions-btn" class="mt-4 bg-indigo-600 text-white font-bold py-2 px-4 rounded-md hover:bg-indigo-700">
+                                Generar Análisis con IA
+                            </button>
+                        </div>
                     </div>
                 `;
                 document.getElementById('generate-conclusions-btn').addEventListener('click', () => generateConclusions(data));
@@ -254,6 +249,18 @@
         
         function createRiskCard(title, dimensions, bgColor, textColor) {
             return `<div class="card"><h4 class="font-bold text-lg mb-3 ${textColor}">${title}</h4><ul class="space-y-2 text-sm">${dimensions.map(d => `<li class="flex justify-between items-center"><span>${d.name}</span><span class="font-semibold ${textColor} ${bgColor} px-2 py-1 rounded-md">${d.unfavorable.toFixed(1)}%</span></li>`).join('') || '<li>No hay dimensiones en esta categoría.</li>'}</ul></div>`;
+        }
+        
+        function getKarasekModelSVG(data) {
+            const demanda = (data.dimensions.find(d => d.name.toLowerCase().includes('exigències quantitatives'))?.unfavorable || 0) + (data.dimensions.find(d => d.name.toLowerCase().includes('ritme de treball'))?.unfavorable || 0) / 2;
+            const control = (data.dimensions.find(d => d.name.toLowerCase().includes('influència'))?.favorable || 0) + (data.dimensions.find(d => d.name.toLowerCase().includes('possibilitats de desenvolupament'))?.favorable || 0) / 2;
+            
+            let x = 300, y = 80; // Default: Alta Tensión (Alta Demanda, Bajo Control)
+            if (demanda < 50 && control >= 50) { x = 100; y = 220; } // Baja Tensión (Baja Demanda, Alto Control)
+            if (demanda >= 50 && control >= 50) { x = 100; y = 80; } // Activo (Alta Demanda, Alto Control)
+            if (demanda < 50 && control < 50) { x = 300; y = 220; } // Pasivo (Baja Demanda, Bajo Control)
+
+            return `<g fill="none" stroke="#334155" stroke-width="1"><path d="M200 0 V300 M0 150 H400"/></g><g text-anchor="middle" font-size="14" font-family="Inter, sans-serif"><text x="100" y="80" fill="#059669">Trabajo Activo</text><text x="300" y="220" fill="#dc2626">Trabajo Pasivo</text><text x="300" y="80" fill="#ef4444">Alta Tensión</text><text x="100" y="220" fill="#65a30d">Baja Tensión</text><text x="200" y="140" font-weight="bold">CONTROL</text><text x="30" y="155" transform="rotate(-90 30 155)" font-weight="bold">DEMANDA</text><g stroke="#c026d3" stroke-width="2" fill="#c026d3" fill-opacity="0.2"><rect x="${x-40}" y="${y-30}" width="80" height="60" rx="10"/><text x="${x}" y="${y+5}" fill="#c026d3" font-size="12" font-weight="bold">Equipo</text></g></g>`;
         }
         
         async function generateConclusions(data) {
@@ -349,4 +356,3 @@
     </script>
 </body>
 </html>
-
