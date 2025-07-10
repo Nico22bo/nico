@@ -3,36 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Dashboards PSQCAT (HTML)</title>
+    <title>Generador de Dashboards PSQCAT (con carga de archivos)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Library for reading Excel files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Library for reading PDF files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.min.js"></script>
+    <script>
+        // Set worker source for PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.worker.min.js`;
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f1f5f9; /* slate-100 */
-        }
-        .card {
-            background-color: white;
-            border-radius: 0.75rem;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-            padding: 1.5rem;
-        }
-        .view {
-            display: none;
-        }
-        .view.active {
-            display: block;
-        }
-        #mobile-nav {
-            transform: translateX(-100%);
-            transition: transform 0.3s ease-in-out;
-        }
-        #mobile-nav.open {
-            transform: translateX(0);
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        .card { background-color: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); padding: 1.5rem; }
+        .view { display: none; }
+        .view.active { display: block; }
+        #mobile-nav { transform: translateX(-100%); transition: transform 0.3s ease-in-out; }
+        #mobile-nav.open { transform: translateX(0); }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #c026d3; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="text-slate-700">
@@ -61,23 +54,30 @@
     <main class="lg:ml-64 p-6 md:p-8">
         <!-- Dashboard View -->
         <div id="view-dashboard" class="view active">
-            <div id="dashboard-content">
-                <!-- Content will be rendered by JavaScript -->
-            </div>
+            <div id="dashboard-content"></div>
         </div>
 
         <!-- Data Input View -->
         <div id="view-data-input" class="view">
             <div class="card">
                 <h2 class="text-2xl font-bold mb-4 text-slate-800">Subir Nuevo Informe</h2>
-                <p class="mb-4 text-slate-600">Asigna un nombre a tu informe y pega el contenido JSON para guardarlo.</p>
+                <p class="mb-4 text-slate-600">Puedes subir un archivo Excel/PDF para pre-rellenar los datos, o pegarlos manualmente en formato JSON.</p>
+                
+                <!-- File Upload Section -->
+                <div class="mb-4 p-4 border border-dashed rounded-md">
+                    <label for="file-input" class="block text-sm font-medium text-slate-700 mb-2">1. Cargar archivo (Opcional)</label>
+                    <input id="file-input" type="file" accept=".xlsx, .xls, .csv, .pdf" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-fuchsia-50 file:text-fuchsia-700 hover:file:bg-fuchsia-100"/>
+                    <div id="file-processing-loader" class="mt-2 hidden items-center gap-2"><div class="loader"></div><span>Procesando archivo...</span></div>
+                </div>
+
+                <!-- Manual Input Section -->
                 <div class="mb-4">
-                    <label for="report-name" class="block text-sm font-medium text-slate-700 mb-1">Nombre del Informe:</label>
+                    <label for="report-name" class="block text-sm font-medium text-slate-700 mb-1">2. Nombre del Informe (Obligatorio)</label>
                     <input id="report-name" type="text" class="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-fuchsia-500" placeholder="Ej: Informe Trimestral Q3">
                 </div>
                 <div class="mb-4">
-                    <label for="json-input" class="block text-sm font-medium text-slate-700 mb-1">Datos JSON:</label>
-                    <textarea id="json-input" class="w-full h-64 p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-fuchsia-500" placeholder="Pega aquí tus datos en formato JSON..."></textarea>
+                    <label for="json-input" class="block text-sm font-medium text-slate-700 mb-1">3. Datos JSON (Revisar o pegar manualmente)</label>
+                    <textarea id="json-input" class="w-full h-64 p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-fuchsia-500" placeholder="Los datos del archivo procesado aparecerán aquí. También puedes pegar tu JSON directamente."></textarea>
                 </div>
                 <div id="notification-area" class="mb-4"></div>
                 <button id="save-report-btn" class="bg-fuchsia-600 text-white font-bold py-2 px-4 rounded-md hover:bg-fuchsia-700 transition-colors">Guardar Informe</button>
@@ -88,9 +88,7 @@
         <div id="view-reports" class="view">
             <div class="card">
                 <h2 class="text-2xl font-bold mb-4 text-slate-800">Mis Informes</h2>
-                <ul id="reports-list" class="space-y-3">
-                    <!-- List will be rendered by JavaScript -->
-                </ul>
+                <ul id="reports-list" class="space-y-3"></ul>
             </div>
         </div>
     </main>
@@ -112,11 +110,8 @@
             appId: "YOUR_APP_ID"
         };
 
-        let db, auth, userId;
-        let selectedReport = null;
-        let reportsUnsubscribe = null;
-        let topRisksChart = null;
-        let mainRiskChart = null;
+        let db, auth, userId, selectedReport = null, reportsUnsubscribe = null;
+        let topRisksChart = null, mainRiskChart = null;
 
         // --- DOM Elements ---
         const views = document.querySelectorAll('.view');
@@ -127,6 +122,8 @@
         const reportNameInput = document.getElementById('report-name');
         const jsonInput = document.getElementById('json-input');
         const notificationArea = document.getElementById('notification-area');
+        const fileInput = document.getElementById('file-input');
+        const loader = document.getElementById('file-processing-loader');
         const navToggle = document.getElementById('nav-toggle');
         const mobileNav = document.getElementById('mobile-nav');
 
@@ -134,82 +131,162 @@
         function switchView(viewId) {
             views.forEach(view => view.classList.remove('active'));
             document.getElementById(`view-${viewId}`).classList.add('active');
-            if (viewId === 'dashboard') {
-                renderDashboard();
-            }
+            if (viewId === 'dashboard') renderDashboard();
         }
 
         navLinks.forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
-                const viewId = e.currentTarget.dataset.view;
-                switchView(viewId);
+                switchView(e.currentTarget.dataset.view);
                 if (window.innerWidth < 1024) mobileNav.classList.remove('open');
             });
         });
 
         navToggle.addEventListener('click', () => mobileNav.classList.toggle('open'));
 
+        // --- File Processing ---
+        fileInput.addEventListener('change', handleFileSelect, false);
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            loader.style.display = 'flex';
+            notificationArea.innerHTML = '';
+            
+            const reader = new FileReader();
+            const fileType = file.name.split('.').pop().toLowerCase();
+
+            if (fileType === 'xlsx' || fileType === 'xls' || fileType === 'csv') {
+                reader.onload = (e) => processExcel(e.target.result);
+                reader.readAsArrayBuffer(file);
+            } else if (fileType === 'pdf') {
+                reader.onload = (e) => processPdf(e.target.result);
+                reader.readAsArrayBuffer(file);
+            } else {
+                renderNotification('Tipo de archivo no soportado.', 'error');
+                loader.style.display = 'none';
+            }
+        }
+        
+        function processExcel(arrayBuffer) {
+            try {
+                const data = new Uint8Array(arrayBuffer);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                
+                // Attempt to convert to PSQCAT format
+                const psqcatData = {
+                    metadata: { company: reportNameInput.value || "Informe Excel", date: new Date().toLocaleDateString(), participants: 100, totalSurveyed: 100 },
+                    dimensions: jsonData.map(row => ({
+                        name: row['Dimensión'] || row['name'] || 'N/A',
+                        unfavorable: parseFloat(row['Más Desfavorable'] || row['unfavorable'] || 0),
+                        intermediate: parseFloat(row['Situación Intermèdia'] || row['intermediate'] || 0),
+                        favorable: parseFloat(row['Más favorable'] || row['favorable'] || 0)
+                    }))
+                };
+                
+                jsonInput.value = JSON.stringify(psqcatData, null, 2);
+                renderNotification('Archivo Excel procesado. Revisa los datos y guarda el informe.', 'success');
+            } catch(e) {
+                renderNotification('Error procesando el archivo Excel: ' + e.message, 'error');
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        async function processPdf(arrayBuffer) {
+            try {
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let fullText = '';
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    fullText += textContent.items.map(item => item.str).join(' ');
+                }
+                
+                // Experimental parsing based on "idiap 2024.pdf" structure
+                const dimensions = [];
+                const regex = /([A-Za-zÀ-ÿ\s\.\/]+)\s+([0-9,.]+)\s+([0-9,.]+)\s+([0-9,.]+)/g;
+                let match;
+                const riskTableText = fullText.substring(fullText.indexOf("Taula 27:"), fullText.indexOf("Vermell: tercil"));
+                
+                while ((match = regex.exec(riskTableText)) !== null) {
+                     // Clean up name and check if it's a valid dimension
+                    let name = match[1].trim().replace(/\s+/g, ' ');
+                    if (name.includes("MÉS PROBLEMÀTIQUES") || name.includes("MENYS PROBLEMÀTIQUES") || name.length < 5 || name.length > 50) continue;
+
+                    dimensions.push({
+                        name: name,
+                        unfavorable: parseFloat(match[2].replace(',', '.')),
+                        intermediate: parseFloat(match[3].replace(',', '.')),
+                        favorable: parseFloat(match[4].replace(',', '.'))
+                    });
+                }
+
+                if (dimensions.length > 0) {
+                    const psqcatData = {
+                        metadata: { company: reportNameInput.value || "Informe PDF", date: new Date().toLocaleDateString(), participants: 93, totalSurveyed: 93 },
+                        dimensions: dimensions
+                    };
+                    jsonInput.value = JSON.stringify(psqcatData, null, 2);
+                    renderNotification('PDF procesado. Se encontraron ' + dimensions.length + ' dimensiones. Revisa los datos.', 'success');
+                } else {
+                    renderNotification('No se pudo extraer una tabla de dimensiones del PDF. La estructura puede no ser reconocida.', 'error');
+                }
+
+            } catch(e) {
+                renderNotification('Error procesando el archivo PDF: ' + e.message, 'error');
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
         // --- Rendering Functions ---
         function renderNotification(message, type = 'success') {
             const color = type === 'success' ? 'green' : 'red';
             notificationArea.innerHTML = `<div class="bg-${color}-100 border border-${color}-400 text-${color}-700 px-4 py-3 rounded-md">${message}</div>`;
-            setTimeout(() => notificationArea.innerHTML = '', 4000);
+            setTimeout(() => notificationArea.innerHTML = '', 5000);
         }
 
         function renderReportsList(reports) {
-            if (reports.length === 0) {
-                reportsList.innerHTML = '<p>No has subido ningún informe. Ve a "Introducir Datos" para empezar.</p>';
-                return;
-            }
-            reportsList.innerHTML = reports.map(report => `
-                <li class="flex items-center justify-between p-3 bg-slate-50 rounded-md hover:bg-slate-100">
-                    <span class="font-medium text-slate-700">${report.name}</span>
-                    <div class="flex items-center gap-2">
-                        <button data-report-id="${report.id}" class="view-dashboard-btn text-sm bg-sky-500 text-white py-1 px-3 rounded-md hover:bg-sky-600">Ver</button>
-                        <button data-report-id="${report.id}" class="delete-report-btn text-sm bg-red-500 text-white p-2 rounded-md hover:bg-red-600">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                        </button>
-                    </div>
-                </li>
-            `).join('');
+            reportsList.innerHTML = reports.length === 0 
+                ? '<p>No has subido ningún informe. Ve a "Introducir Datos" para empezar.</p>'
+                : reports.map(report => `
+                    <li class="flex items-center justify-between p-3 bg-slate-50 rounded-md hover:bg-slate-100">
+                        <span class="font-medium text-slate-700">${report.name}</span>
+                        <div class="flex items-center gap-2">
+                            <button data-report-id="${report.id}" class="view-dashboard-btn text-sm bg-sky-500 text-white py-1 px-3 rounded-md hover:bg-sky-600">Ver</button>
+                            <button data-report-id="${report.id}" class="delete-report-btn text-sm bg-red-500 text-white p-2 rounded-md hover:bg-red-600"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                        </div>
+                    </li>`).join('');
         }
 
         function renderDashboard() {
             if (!selectedReport) {
-                dashboardContent.innerHTML = `
-                    <div class="card text-center">
-                        <h2 class="text-2xl font-bold text-slate-800">Bienvenido</h2>
-                        <p class="mt-2 text-slate-600">No hay ningún informe seleccionado. Por favor, ve a "Mis Informes" para elegir uno.</p>
-                    </div>`;
+                dashboardContent.innerHTML = `<div class="card text-center"><h2 class="text-2xl font-bold">Bienvenido</h2><p class="mt-2">No hay ningún informe seleccionado. Ve a "Mis Informes" para elegir uno.</p></div>`;
                 return;
             }
-
             try {
                 const data = JSON.parse(selectedReport.data);
                 const topRisks = [...data.dimensions].sort((a, b) => b.unfavorable - a.unfavorable).slice(0, 5);
-                const mainRisk = topRisks[0];
-                const mostFavorable = [...data.dimensions].sort((a, b) => b.favorable - a.favorable)[0];
+                const mainRisk = topRisks[0] || { name: 'N/A', unfavorable: 0 };
+                const mostFavorable = [...data.dimensions].sort((a, b) => b.favorable - a.favorable)[0] || { name: 'N/A', favorable: 0 };
                 const responseRate = (data.metadata.participants / data.metadata.totalSurveyed) * 100;
 
                 dashboardContent.innerHTML = `
-                    <h2 class="text-2xl font-bold mb-4 text-slate-800">Dashboard: <span class="text-fuchsia-600">${selectedReport.name}</span></h2>
+                    <h2 class="text-2xl font-bold mb-4">Dashboard: <span class="text-fuchsia-600">${selectedReport.name}</span></h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                         <div class="card"><p class="text-sm text-slate-500">Tasa de Respuesta</p><p class="text-2xl font-bold">${responseRate.toFixed(1)}%</p></div>
-                        <div class="card"><p class="text-sm text-slate-500">Principal Riesgo</p><p class="text-xl font-bold">${mainRisk?.name} (${mainRisk?.unfavorable}%)</p></div>
-                        <div class="card"><p class="text-sm text-slate-500">Dimensión Favorable</p><p class="text-xl font-bold">${mostFavorable?.name} (${mostFavorable?.favorable}%)</p></div>
+                        <div class="card"><p class="text-sm text-slate-500">Principal Riesgo</p><p class="text-xl font-bold">${mainRisk.name} (${mainRisk.unfavorable}%)</p></div>
+                        <div class="card"><p class="text-sm text-slate-500">Dimensión Favorable</p><p class="text-xl font-bold">${mostFavorable.name} (${mostFavorable.favorable}%)</p></div>
                     </div>
                     <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                        <div class="lg:col-span-3 card">
-                            <h3 class="text-lg font-semibold mb-4">Top 5 Riesgos (% Exposición Desfavorable)</h3>
-                            <canvas id="topRisksChart"></canvas>
-                        </div>
-                        <div class="lg:col-span-2 card">
-                            <h3 class="text-lg font-semibold mb-4">Desglose: ${mainRisk?.name}</h3>
-                            <canvas id="mainRiskChart"></canvas>
-                        </div>
-                    </div>
-                `;
+                        <div class="lg:col-span-3 card"><h3 class="text-lg font-semibold mb-4">Top 5 Riesgos</h3><canvas id="topRisksChart"></canvas></div>
+                        <div class="lg:col-span-2 card"><h3 class="text-lg font-semibold mb-4">Desglose: ${mainRisk.name}</h3><canvas id="mainRiskChart"></canvas></div>
+                    </div>`;
                 renderCharts(topRisks, mainRisk);
             } catch (e) {
                 dashboardContent.innerHTML = `<div class="card text-red-600">Error al procesar los datos del informe.</div>`;
@@ -223,32 +300,14 @@
             const topRisksCtx = document.getElementById('topRisksChart').getContext('2d');
             topRisksChart = new Chart(topRisksCtx, {
                 type: 'bar',
-                data: {
-                    labels: topRisks.map(r => r.name),
-                    datasets: [{
-                        label: '% Exposición Desfavorable',
-                        data: topRisks.map(r => r.unfavorable),
-                        backgroundColor: 'rgba(192, 38, 211, 0.8)',
-                        borderColor: 'rgba(192, 38, 211, 1)',
-                        borderWidth: 1,
-                        borderRadius: 5
-                    }]
-                },
+                data: { labels: topRisks.map(r => r.name), datasets: [{ label: '% Desfavorable', data: topRisks.map(r => r.unfavorable), backgroundColor: 'rgba(192, 38, 211, 0.8)' }] },
                 options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } } }
             });
 
             const mainRiskCtx = document.getElementById('mainRiskChart').getContext('2d');
             mainRiskChart = new Chart(mainRiskCtx, {
                 type: 'doughnut',
-                data: {
-                    labels: ['Desfavorable', 'Intermedia', 'Favorable'],
-                    datasets: [{
-                        data: [mainRisk.unfavorable, mainRisk.intermediate, mainRisk.favorable],
-                        backgroundColor: ['rgba(239, 68, 68, 0.8)', 'rgba(250, 204, 21, 0.8)', 'rgba(34, 197, 94, 0.8)'],
-                        borderColor: '#fff',
-                        borderWidth: 2
-                    }]
-                },
+                data: { labels: ['Desfavorable', 'Intermedia', 'Favorable'], datasets: [{ data: [mainRisk.unfavorable, mainRisk.intermediate, mainRisk.favorable], backgroundColor: ['#ef4444', '#facc15', '#22c55e'], borderColor: '#fff' }] },
                 options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
             });
         }
@@ -257,28 +316,18 @@
         async function saveReport() {
             const name = reportNameInput.value.trim();
             const json = jsonInput.value.trim();
-            if (!name) {
-                renderNotification('Por favor, introduce un nombre para el informe.', 'error');
-                return;
-            }
-            if (!userId) {
-                renderNotification('No se ha podido autenticar. Inténtalo de nuevo.', 'error');
-                return;
-            }
+            if (!name) { renderNotification('Por favor, introduce un nombre para el informe.', 'error'); return; }
+            if (!userId) { renderNotification('No se ha podido autenticar. Inténtalo de nuevo.', 'error'); return; }
 
             try {
                 const parsedData = JSON.parse(json);
                 if (!parsedData.metadata || !parsedData.dimensions) throw new Error("Formato JSON inválido.");
-
                 const reportsCollection = collection(db, `users/${userId}/reports`);
-                await addDoc(reportsCollection, {
-                    name,
-                    data: json,
-                    createdAt: new Date(),
-                });
+                await addDoc(reportsCollection, { name, data: json, createdAt: new Date() });
                 renderNotification(`¡Informe "${name}" guardado con éxito!`);
                 reportNameInput.value = '';
                 jsonInput.value = '';
+                fileInput.value = '';
             } catch (e) {
                 renderNotification(`Error: ${e.message}`, 'error');
             }
@@ -287,8 +336,7 @@
         async function deleteReport(reportId) {
             if (!db || !userId) return;
             if (confirm("¿Estás seguro de que quieres eliminar este informe?")) {
-                const reportDoc = doc(db, `users/${userId}/reports`, reportId);
-                await deleteDoc(reportDoc);
+                await deleteDoc(doc(db, `users/${userId}/reports`, reportId));
                 if (selectedReport && selectedReport.id === reportId) {
                     selectedReport = null;
                     renderDashboard();
@@ -297,23 +345,16 @@
         }
 
         function listenToReports() {
-            if (reportsUnsubscribe) reportsUnsubscribe(); // Unsubscribe from previous listener
-            const reportsCollection = collection(db, `users/${userId}/reports`);
-            const q = query(reportsCollection, orderBy("createdAt", "desc"));
+            if (reportsUnsubscribe) reportsUnsubscribe();
+            const q = query(collection(db, `users/${userId}/reports`), orderBy("createdAt", "desc"));
             reportsUnsubscribe = onSnapshot(q, (snapshot) => {
                 const reports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderReportsList(reports);
-                // Attach event listeners to the new buttons
-                document.querySelectorAll('.view-dashboard-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const reportId = e.currentTarget.dataset.reportId;
-                        selectedReport = reports.find(r => r.id === reportId);
-                        switchView('dashboard');
-                    });
+                document.querySelectorAll('.view-dashboard-btn').forEach(btn => btn.onclick = (e) => {
+                    selectedReport = reports.find(r => r.id === e.currentTarget.dataset.reportId);
+                    switchView('dashboard');
                 });
-                document.querySelectorAll('.delete-report-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => deleteReport(e.currentTarget.dataset.reportId));
-                });
+                document.querySelectorAll('.delete-report-btn').forEach(btn => btn.onclick = (e) => deleteReport(e.currentTarget.dataset.reportId));
             });
         }
 
@@ -323,27 +364,20 @@
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
-
                 onAuthStateChanged(auth, user => {
-                    if (user) {
-                        userId = user.uid;
-                        listenToReports();
-                    } else {
-                        signInAnonymously(auth).catch(error => console.error("Anonymous sign-in failed:", error));
-                    }
+                    if (user) { userId = user.uid; listenToReports(); } 
+                    else { signInAnonymously(auth).catch(e => console.error("Sign-in failed:", e)); }
                 });
-
                 saveReportBtn.addEventListener('click', saveReport);
-                renderDashboard(); // Initial render
+                renderDashboard();
             } catch (error) {
-                console.error("Firebase initialization failed:", error);
-                dashboardContent.innerHTML = `<div class="card text-red-600">Error de inicialización. Revisa la configuración de Firebase en la consola.</div>`;
+                console.error("Firebase init failed:", error);
+                dashboardContent.innerHTML = `<div class="card text-red-600">Error de inicialización. Revisa la config de Firebase.</div>`;
             }
         }
 
-        // Run the app
         init();
-
     </script>
 </body>
 </html>
+
