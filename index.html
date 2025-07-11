@@ -203,7 +203,6 @@
                 return dimensions;
             }
 
-            // **NUEVO MOTOR DE ANÁLISIS DE DATOS DE SALUD - MÁS ROBUSTO**
             function parseHealthMetrics(text) {
                 const metrics = {
                     generalhealth: {}, satisfaction: {}, stress: {}, burnout: {}, salutmental: {}
@@ -537,7 +536,6 @@
                             </div>
                         </li>`).join('');
                 
-                // Re-asignar eventos después de renderizar
                 document.querySelectorAll('.view-dashboard-btn').forEach(btn => btn.onclick = (e) => {
                     selectedReport = reports.find(r => r.id === e.currentTarget.dataset.reportId);
                     switchView('dashboard');
@@ -545,8 +543,7 @@
                 document.querySelectorAll('.delete-report-btn').forEach(btn => btn.onclick = (e) => requestDelete(e.currentTarget.dataset.reportId));
             }
 
-
-            // --- INICIALIZACIÓN ---
+            // --- INICIALIZACIÓN Y LÓGICA DE AUTENTICACIÓN MEJORADA ---
             function renderNotification(message, type = 'success') {
                 const color = type === 'success' ? 'green' : 'red';
                 const notification = document.createElement('div');
@@ -556,8 +553,45 @@
                 setTimeout(() => notification.remove(), 5000);
             }
 
+            function setUIEnabled(isEnabled) {
+                if (isEnabled) {
+                    DOM.authStatusAssistant.classList.add('hidden');
+                    DOM.authStatusInput.classList.add('hidden');
+                } else {
+                    const loadingMessage = `<div class="loader !w-4 !h-4"></div><span>Connectant amb el servidor...</span>`;
+                    DOM.authStatusAssistant.innerHTML = loadingMessage;
+                    DOM.authStatusInput.innerHTML = loadingMessage;
+                    DOM.authStatusAssistant.classList.remove('hidden');
+                    DOM.authStatusInput.classList.remove('hidden');
+                }
+
+                DOM.rawRiskDataInput.disabled = !isEnabled;
+                DOM.rawHealthDataInput.disabled = !isEnabled;
+                DOM.translateBtn.disabled = !isEnabled;
+                DOM.reportNameInput.disabled = !isEnabled;
+                DOM.jsonInput.disabled = !isEnabled;
+                DOM.saveReportBtn.disabled = !isEnabled;
+            }
+            
+            async function performInitialAuth() {
+                if (auth.currentUser) return;
+                try {
+                    const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                    if (token) {
+                        await signInWithCustomToken(auth, token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (error) {
+                    console.error("Fatal authentication error:", error);
+                    const errorMessage = `<span class="text-red-600 font-semibold">Error de connexió. No es podran guardar informes. Recarrega la pàgina per reintentar.</span>`;
+                    DOM.authStatusAssistant.innerHTML = errorMessage;
+                    DOM.authStatusInput.innerHTML = errorMessage;
+                    renderNotification("Error de connexió crític. No es pot contactar amb el servidor.", 'error');
+                }
+            }
+
             async function init() {
-                // Usar la configuración de Firebase proporcionada por el entorno
                 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
 
                 if (!firebaseConfig) {
@@ -570,39 +604,24 @@
                     const app = initializeApp(firebaseConfig);
                     auth = getAuth(app);
                     db = getFirestore(app);
-                    setLogLevel('debug'); // Habilitar logs para depuración
+                    setLogLevel('debug');
 
-                    onAuthStateChanged(auth, async (user) => {
+                    onAuthStateChanged(auth, (user) => {
                         if (user) {
                             userId = user.uid;
-                            
-                            // HABILITAR LA INTERFAZ DE USUARIO UNA VEZ AUTENTICADO
-                            DOM.authStatusAssistant.classList.add('hidden');
-                            DOM.authStatusInput.classList.add('hidden');
-                            DOM.rawRiskDataInput.disabled = false;
-                            DOM.rawHealthDataInput.disabled = false;
-                            DOM.translateBtn.disabled = false;
-                            DOM.reportNameInput.disabled = false;
-                            DOM.jsonInput.disabled = false;
-                            DOM.saveReportBtn.disabled = false;
-
+                            setUIEnabled(true);
                             listenToReports();
                         } else {
-                            // Intentar login con token personalizado, si no, anónimo
-                            const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-                            if (token) {
-                                try {
-                                    await signInWithCustomToken(auth, token);
-                                } catch (e) {
-                                    console.error("Custom token sign-in failed, falling back to anonymous", e);
-                                    await signInAnonymously(auth);
-                                }
-                            } else {
-                                await signInAnonymously(auth);
-                            }
+                            userId = null;
+                            setUIEnabled(false);
+                            if (reportsUnsubscribe) reportsUnsubscribe();
+                            renderReportsList([]);
                         }
                     });
+
+                    await performInitialAuth();
                     renderDashboard();
+
                 } catch (error) {
                     console.error("Firebase init failed:", error);
                     DOM.dashboardContent.innerHTML = `<div class="card text-red-600">Error d'inicialització. Comprova la consola per a més detalls.</div>`;
@@ -614,4 +633,5 @@
     </script>
 </body>
 </html>
+
 
