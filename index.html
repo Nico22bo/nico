@@ -22,7 +22,7 @@
         .prose h4 { font-size: 1.125rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; }
         .prose ul { list-style-position: inside; }
         .prose li { margin-left: 1rem; }
-        /* Estilos para el modal de confirmación */
+        /* Estilos para el modal */
         .modal-backdrop {
             position: fixed;
             top: 0;
@@ -44,19 +44,27 @@
 <body class="text-slate-700">
 
     <!-- Sidebar Navigation -->
-    <aside id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-slate-800 text-white p-6 overflow-y-auto z-40">
-        <div class="mb-10 text-center">
-            <h1 class="text-2xl font-bold">CoPsoQ <span class="text-fuchsia-400">psqcat</span></h1>
-            <p class="text-sm text-slate-400">Generador d'Informes</p>
+    <aside id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-slate-800 text-white p-6 flex flex-col z-40">
+        <div>
+            <div class="mb-10 text-center">
+                <h1 class="text-2xl font-bold">CoPsoQ <span class="text-fuchsia-400">psqcat</span></h1>
+                <p class="text-sm text-slate-400">Generador d'Informes</p>
+            </div>
+            <nav>
+                <ul class="space-y-2" id="nav-links">
+                    <li><a href="#dashboard" data-view="dashboard" class="nav-link flex items-center p-2 rounded-md hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3"><path d="M12 20V10M18 20V4M6 20V16"/></svg>Dashboard</a></li>
+                    <li><a href="#data-assistant" data-view="data-assistant" class="nav-link flex items-center p-2 rounded-md hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3"><path d="M12 2a10 10 0 00-9.95 9.5c.05.59.41 1.05.95 1.05h18c.54 0 .9-.46.95-1.05A10 10 0 0012 2z"/><path d="M12 12v10M12 2L4.5 4.5M12 2l7.5 2.5"/></svg>Assistent de Dades</a></li>
+                    <li><a href="#data-input" data-view="data-input" class="nav-link flex items-center p-2 rounded-md hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Guardar Informe</a></li>
+                    <li><a href="#reports" data-view="reports" class="nav-link flex items-center p-2 rounded-md hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Els Meus Informes</a></li>
+                </ul>
+            </nav>
         </div>
-        <nav>
-            <ul class="space-y-2" id="nav-links">
-                <li><a href="#dashboard" data-view="dashboard" class="nav-link flex items-center p-2 rounded-md hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3"><path d="M12 20V10M18 20V4M6 20V16"/></svg>Dashboard</a></li>
-                <li><a href="#data-assistant" data-view="data-assistant" class="nav-link flex items-center p-2 rounded-md hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3"><path d="M12 2a10 10 0 00-9.95 9.5c.05.59.41 1.05.95 1.05h18c.54 0 .9-.46.95-1.05A10 10 0 0012 2z"/><path d="M12 12v10M12 2L4.5 4.5M12 2l7.5 2.5"/></svg>Assistent de Dades</a></li>
-                <li><a href="#data-input" data-view="data-input" class="nav-link flex items-center p-2 rounded-md hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Guardar Informe</a></li>
-                <li><a href="#reports" data-view="reports" class="nav-link flex items-center p-2 rounded-md hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Els Meus Informes</a></li>
-            </ul>
-        </nav>
+        <div class="mt-auto">
+             <button id="config-btn" class="flex items-center p-2 w-full rounded-md text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                <span>Configuració</span>
+            </button>
+        </div>
     </aside>
 
     <!-- Mobile Nav Toggle -->
@@ -85,6 +93,24 @@
         </div>
     </div>
 
+    <!-- Modal de Configuración de Firebase -->
+    <div id="config-modal" class="hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
+            <h3 class="text-lg font-bold text-slate-800">Configuració de Firebase</h3>
+            <p class="text-slate-600 mt-2">Per utilitzar l'aplicació fora de l'entorn de desenvolupament, has de proporcionar la teva pròpia configuració de Firebase.</p>
+            <p class="text-xs text-slate-500 mt-1">Aquesta informació es guardarà només al teu navegador.</p>
+            <div class="mt-4">
+                <label for="config-input" class="block text-sm font-medium text-slate-700">Objecte de Configuració de Firebase</label>
+                <textarea id="config-input" rows="10" class="w-full mt-1 p-2 border rounded-md font-mono text-sm" placeholder='{ "apiKey": "...", "authDomain": "...", ... }'></textarea>
+                <div id="config-error" class="text-red-600 text-sm mt-1"></div>
+            </div>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button id="save-config-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Guardar i Reiniciar</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         // Importaciones de Firebase SDK actualizadas
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -94,6 +120,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             // Variables globales de la aplicación
             let db, auth, userId, selectedReport = null, reportsUnsubscribe = null, reportToDeleteId = null;
+            let app; // Firebase app instance
             const charts = {};
             
             // Variable appId obligatoria para las rutas de Firestore
@@ -119,6 +146,11 @@
                 cancelDeleteBtn: document.getElementById('cancel-delete-btn'),
                 authStatusAssistant: document.getElementById('auth-status-assistant'),
                 authStatusInput: document.getElementById('auth-status-input'),
+                configModal: document.getElementById('config-modal'),
+                configBtn: document.getElementById('config-btn'),
+                saveConfigBtn: document.getElementById('save-config-btn'),
+                configInput: document.getElementById('config-input'),
+                configError: document.getElementById('config-error'),
             };
 
             // Función para cambiar entre vistas (Dashboard, Asistente, etc.)
@@ -146,6 +178,22 @@
                     reportToDeleteId = null;
                 }
                 DOM.deleteModal.classList.add('hidden');
+            });
+            DOM.configBtn.addEventListener('click', () => DOM.configModal.classList.remove('hidden'));
+            DOM.saveConfigBtn.addEventListener('click', () => {
+                const configText = DOM.configInput.value;
+                DOM.configError.textContent = '';
+                try {
+                    const config = JSON.parse(configText);
+                    if (!config.apiKey || !config.projectId) {
+                        throw new Error("La configuració ha de contenir almenys 'apiKey' i 'projectId'.");
+                    }
+                    localStorage.setItem('firebaseConfig', configText);
+                    DOM.configModal.classList.add('hidden');
+                    window.location.reload(); // Recargar para aplicar la nueva configuración
+                } catch (e) {
+                    DOM.configError.textContent = `Error: ${e.message}`;
+                }
             });
 
             // --- LÓGICA DE TRADUCCIÓN DE DATOS ---
@@ -573,35 +621,40 @@
                 DOM.saveReportBtn.disabled = !isEnabled;
             }
             
-            async function performInitialAuth() {
-                if (auth.currentUser) return;
-                try {
-                    const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-                    if (token) {
-                        await signInWithCustomToken(auth, token);
-                    } else {
-                        await signInAnonymously(auth);
+            function getFirebaseConfig() {
+                // Prioridad 1: Variable de entorno del Canvas
+                if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                    try {
+                        return JSON.parse(__firebase_config);
+                    } catch (e) {
+                        console.error("Error parsing __firebase_config:", e);
                     }
-                } catch (error) {
-                    console.error("Fatal authentication error:", error);
-                    const errorMessage = `<span class="text-red-600 font-semibold">Error de connexió. No es podran guardar informes. Recarrega la pàgina per reintentar.</span>`;
-                    DOM.authStatusAssistant.innerHTML = errorMessage;
-                    DOM.authStatusInput.innerHTML = errorMessage;
-                    renderNotification("Error de connexió crític. No es pot contactar amb el servidor.", 'error');
                 }
+                // Prioridad 2: Configuración guardada en localStorage
+                const storedConfig = localStorage.getItem('firebaseConfig');
+                if (storedConfig) {
+                    try {
+                        return JSON.parse(storedConfig);
+                    } catch (e) {
+                        console.error("Error parsing firebaseConfig from localStorage:", e);
+                        localStorage.removeItem('firebaseConfig'); // Limpiar configuración inválida
+                    }
+                }
+                // Si no hay configuración, no se devuelve nada
+                return null;
             }
 
             async function init() {
-                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+                const firebaseConfig = getFirebaseConfig();
 
                 if (!firebaseConfig) {
-                    console.error("Firebase config is not available.");
-                    DOM.dashboardContent.innerHTML = `<div class="card text-red-600">Error de configuració. No s'ha pogut inicialitzar l'aplicació.</div>`;
+                    DOM.dashboardContent.innerHTML = `<div class="card text-center"><h2 class="text-xl font-bold text-red-600">Error de Configuració</h2><p class="mt-2">No s'ha trobat una configuració de Firebase vàlida. Fes clic a la icona d'Ajustos a la barra lateral per configurar l'aplicació.</p></div>`;
+                    DOM.configModal.classList.remove('hidden');
                     return;
                 }
 
                 try {
-                    const app = initializeApp(firebaseConfig);
+                    app = initializeApp(firebaseConfig);
                     auth = getAuth(app);
                     db = getFirestore(app);
                     setLogLevel('debug');
@@ -619,12 +672,25 @@
                         }
                     });
 
-                    await performInitialAuth();
+                    // Iniciar sesión anónima si no hay usuario
+                    if (!auth.currentUser) {
+                        const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                        if (token) {
+                            await signInWithCustomToken(auth, token).catch(e => {
+                                console.error("Custom token sign-in failed, falling back to anonymous", e);
+                                return signInAnonymously(auth);
+                            });
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    }
+                    
                     renderDashboard();
 
                 } catch (error) {
                     console.error("Firebase init failed:", error);
-                    DOM.dashboardContent.innerHTML = `<div class="card text-red-600">Error d'inicialització. Comprova la consola per a més detalls.</div>`;
+                    DOM.dashboardContent.innerHTML = `<div class="card text-red-600">Error d'inicialització de Firebase. Comprova la configuració i la consola per a més detalls.</div>`;
+                    DOM.configModal.classList.remove('hidden');
                 }
             }
 
