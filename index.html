@@ -162,7 +162,7 @@
 
             function parseHealthMetrics(text) {
                 const metrics = {
-                    generalHealth: {}, satisfaction: {}, stress: {}, burnout: {}, salutmental: {}
+                    generalhealth: {}, satisfaction: {}, stress: {}, burnout: {}, salutmental: {}
                 };
                 if (!text.trim()) return metrics;
 
@@ -237,9 +237,9 @@
                         <h2 class="text-3xl font-bold mb-2">Dashboard: <span class="text-fuchsia-600">${selectedReport.name}</span></h2>
                         <p class="text-slate-500 mb-6">Empresa: ${data.metadata.company} - Data: ${data.metadata.date}</p>
                         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                            ${createRiskCard("Exposicions Problemàtiques", problematic, 'bg-red-100', 'text-red-700')}
-                            ${createRiskCard("Exposicions Millorables", improvable, 'bg-yellow-100', 'text-yellow-700')}
-                            ${createRiskCard("Exposicions Favorables", favorable, 'bg-green-100', 'text-green-700')}
+                            ${createRiskCard("Exposicions Problemàtiques", problematic, 'bg-red-100', 'text-red-700', 'unfavorable')}
+                            ${createRiskCard("Exposicions Millorables", improvable, 'bg-yellow-100', 'text-yellow-700', 'unfavorable')}
+                            ${createRiskCard("Exposicions Favorables", favorable, 'bg-green-100', 'text-green-700', 'favorable')}
                         </div>
                         <div class="card mb-8">
                             <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
@@ -280,8 +280,8 @@
                 }
             }
             
-            function createRiskCard(title, dimensions, bgColor, textColor) {
-                return `<div class="card"><h4 class="font-bold text-lg mb-3 ${textColor}">${title}</h4><ul class="space-y-2 text-sm">${dimensions.map(d => `<li class="flex justify-between items-center"><span>${d.name}</span><span class="font-semibold ${textColor} ${bgColor} px-2 py-1 rounded-md">${(title === 'Exposicions Favorables' ? d.favorable : d.unfavorable).toFixed(1)}%</span></li>`).join('') || '<li>No hi ha dimensions en aquesta categoria.</li>'}</ul></div>`;
+            function createRiskCard(title, dimensions, bgColor, textColor, valueKey) {
+                return `<div class="card"><h4 class="font-bold text-lg mb-3 ${textColor}">${title}</h4><ul class="space-y-2 text-sm">${dimensions.map(d => `<li class="flex justify-between items-center"><span>${d.name}</span><span class="font-semibold ${textColor} ${bgColor} px-2 py-1 rounded-md">${d[valueKey].toFixed(1)}%</span></li>`).join('') || '<li>No hi ha dimensions en aquesta categoria.</li>'}</ul></div>`;
             }
 
             function renderHealthCharts(data, ageGroupKey) {
@@ -461,4 +461,5 @@
     </script>
 </body>
 </html>
+
 
