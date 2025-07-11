@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Dashboards amb Anàlisi de Salut (Versió Millorada)</title>
+    <title>Generador de Dashboards amb Anàlisi de Salut (Versió Definitiva)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -201,16 +201,12 @@
                 return dimensions;
             }
 
-            // **FUNCIÓN MEJORADA PARA PARSEAR DATOS DE SALUD**
+            // **NUEVO MOTOR DE ANÁLISIS DE DATOS DE SALUD - MÁS ROBUSTO**
             function parseHealthMetrics(text) {
                 const metrics = {
                     generalhealth: {}, satisfaction: {}, stress: {}, burnout: {}, salutmental: {}
                 };
                 if (!text.trim()) return metrics;
-
-                const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-                let currentMetricKey = '';
-                let currentGroupKey = '';
 
                 const metricKeywords = {
                     'salut general de': 'generalhealth',
@@ -225,44 +221,56 @@
                     'entre 31 - 45 anys': 'between31_45',
                     'més de 45 anys': 'over45'
                 };
+                
+                const splitter = new RegExp(`(?=^(${Object.keys(metricKeywords).join('|')}))`, 'gim');
+                const blocks = text.split(splitter).filter(s => s.trim());
 
-                lines.forEach(line => {
-                    const lowerLine = line.toLowerCase();
+                blocks.forEach(block => {
+                    const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
+                    if (lines.length === 0) return;
+
+                    const firstLineLower = lines[0].toLowerCase();
+                    let currentMetricKey = null;
                     
-                    // Detectar cambio de métrica
                     for (const keyword in metricKeywords) {
-                        if (lowerLine.startsWith(keyword)) {
+                        if (firstLineLower.startsWith(keyword)) {
                             currentMetricKey = metricKeywords[keyword];
-                            return; // Pasar a la siguiente línea
+                            break;
                         }
-                    }
-
-                    // Detectar cambio de grupo (TOTS, DONES, HOMES)
-                    if (['tots', 'dones', 'homes'].includes(lowerLine)) {
-                        currentGroupKey = lowerLine;
-                        if (!metrics[currentMetricKey][currentGroupKey]) {
-                            metrics[currentMetricKey][currentGroupKey] = {};
-                        }
-                        return;
                     }
                     
-                    // Detectar y parsear línea de datos de edad
-                    for (const ageKeyword in ageKeywords) {
-                        if (lowerLine.startsWith(ageKeyword)) {
-                            const ageKey = ageKeywords[ageKeyword];
-                            const values = line.split(/\s{2,}|	/).slice(1).map(v => parseFloat(v.replace(',', '.'))).filter(v => !isNaN(v));
-                            
-                            if (currentMetricKey && currentGroupKey && values.length > 0) {
-                                if (!metrics[currentMetricKey][currentGroupKey]) {
-                                    metrics[currentMetricKey][currentGroupKey] = {};
-                                }
-                                metrics[currentMetricKey][currentGroupKey][ageKey] = values;
+                    if (!currentMetricKey) return;
+
+                    let currentGroupKey = '';
+                    
+                    lines.forEach(line => {
+                        const lowerLine = line.toLowerCase();
+
+                        if (['tots', 'dones', 'homes'].includes(lowerLine)) {
+                            currentGroupKey = lowerLine;
+                            if (!metrics[currentMetricKey][currentGroupKey]) {
+                                metrics[currentMetricKey][currentGroupKey] = {};
                             }
                             return;
                         }
-                    }
-                });
 
+                        for (const ageKeyword in ageKeywords) {
+                            if (lowerLine.startsWith(ageKeyword)) {
+                                const ageKey = ageKeywords[ageKeyword];
+                                const parts = line.split(/\s{2,}|	/);
+                                const values = parts.slice(1).map(v => parseFloat(v.replace(',', '.'))).filter(v => !isNaN(v));
+                                
+                                if (currentGroupKey && values.length > 0) {
+                                    if (!metrics[currentMetricKey][currentGroupKey]) {
+                                        metrics[currentMetricKey][currentGroupKey] = {};
+                                    }
+                                    metrics[currentMetricKey][currentGroupKey][ageKey] = values;
+                                }
+                                return;
+                            }
+                        }
+                    });
+                });
                 return metrics;
             }
 
@@ -331,7 +339,6 @@
                 return `<div class="card"><h4 class="font-bold text-lg mb-3 ${textColor}">${title}</h4><ul class="space-y-2 text-sm">${dimensions.map(d => `<li class="flex justify-between items-center"><span>${d.name}</span><span class="font-semibold ${textColor} ${bgColor} px-2 py-1 rounded-md">${d[valueKey].toFixed(1)}%</span></li>`).join('') || '<li>No hi ha dimensions en aquesta categoria.</li>'}</ul></div>`;
             }
 
-            // **FUNCIÓN ACTUALIZADA PARA RENDERIZAR TODOS LOS GRÁFICOS DE SALUD**
             function renderHealthCharts(data, ageGroupKey) {
                 const container = document.getElementById('health-charts-container');
                 container.innerHTML = '';
@@ -349,7 +356,7 @@
 
                 metrics.forEach(metric => {
                     const metricData = data.healthMetrics[metric.key];
-                    if (!metricData || (!metricData.dones && !metricData.homes)) return;
+                    if (!metricData || (Object.keys(metricData).length === 0)) return;
 
                     let donesData = [], homesData = [];
                     
@@ -594,6 +601,3 @@
     </script>
 </body>
 </html>
-
-
-
