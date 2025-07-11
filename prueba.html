@@ -229,9 +229,9 @@
                 }
                 try {
                     const data = JSON.parse(selectedReport.data);
-                    const problematic = data.dimensions.filter(d => d.unfavorable > 50);
-                    const improvable = data.dimensions.filter(d => d.unfavorable >= 33.3 && d.unfavorable <= 49.9);
-                    const favorable = data.dimensions.filter(d => d.favorable > 33.3);
+                    const problematic = data.dimensions.filter(d => d.unfavorable > 50).sort((a,b) => b.unfavorable - a.unfavorable);
+                    const improvable = data.dimensions.filter(d => d.unfavorable >= 33.3 && d.unfavorable <= 49.9).sort((a,b) => b.unfavorable - a.unfavorable);
+                    const favorable = data.dimensions.filter(d => d.favorable > 33.3).sort((a,b) => b.favorable - a.favorable);
 
                     DOM.dashboardContent.innerHTML = `
                         <h2 class="text-3xl font-bold mb-2">Dashboard: <span class="text-fuchsia-600">${selectedReport.name}</span></h2>
@@ -281,7 +281,7 @@
             }
             
             function createRiskCard(title, dimensions, bgColor, textColor) {
-                return `<div class="card"><h4 class="font-bold text-lg mb-3 ${textColor}">${title}</h4><ul class="space-y-2 text-sm">${dimensions.map(d => `<li class="flex justify-between items-center"><span>${d.name}</span><span class="font-semibold ${textColor} ${bgColor} px-2 py-1 rounded-md">${d.unfavorable.toFixed(1)}%</span></li>`).join('') || '<li>No hi ha dimensions en aquesta categoria.</li>'}</ul></div>`;
+                return `<div class="card"><h4 class="font-bold text-lg mb-3 ${textColor}">${title}</h4><ul class="space-y-2 text-sm">${dimensions.map(d => `<li class="flex justify-between items-center"><span>${d.name}</span><span class="font-semibold ${textColor} ${bgColor} px-2 py-1 rounded-md">${(title === 'Exposicions Favorables' ? d.favorable : d.unfavorable).toFixed(1)}%</span></li>`).join('') || '<li>No hi ha dimensions en aquesta categoria.</li>'}</ul></div>`;
             }
 
             function renderHealthCharts(data, ageGroupKey) {
@@ -461,4 +461,5 @@
     </script>
 </body>
 </html>
+
 
