@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Dashboards amb Anàlisi de Salut (Versió Definitiva)</title>
+    <title>Generador de Dashboards amb Anàlisi de Salut (Versió Millorada)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,6 +22,7 @@
         .prose h4 { font-size: 1.125rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; }
         .prose ul { list-style-position: inside; }
         .prose li { margin-left: 1rem; }
+        .modal-hidden { display: none; }
     </style>
 </head>
 <body class="text-slate-700">
@@ -50,26 +51,33 @@
     <!-- Main Content -->
     <main class="lg:ml-64 p-6 md:p-8">
         <div id="view-dashboard" class="view active"><div id="dashboard-content"></div></div>
-        <div id="view-data-assistant" class="view"><div class="card"><h2 class="text-2xl font-bold mb-2">Assistent Traductor de Dades</h2><p class="mb-4 text-slate-600">Aquesta eina t'ajuda a convertir les dades del teu informe a un format compatible.</p><div class="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 mb-4" role="alert"><p class="font-bold">Instruccions</p><ol class="list-decimal list-inside mt-2"><li>Obre el teu informe PSQCAT.</li><li>Copia el text de la taula de riscos i la de salut.</li><li>Enganxa cada text al seu quadre corresponent.</li><li>Fes clic a "Traduir a JSON".</li></ol></div><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div class="mb-4"><label for="raw-risk-data-input" class="block text-sm font-medium">1. Enganxa aquí les dades de **Riscos**</label><textarea id="raw-risk-data-input" class="w-full h-64 p-2 border rounded-md" placeholder="Ex: Exigències quantitatives (N=87)	50,5747	34,4828	14,9425"></textarea></div><div class="mb-4"><label for="raw-health-data-input" class="block text-sm font-medium">2. Enganxa aquí les dades de **Salut i Benestar**</label><textarea id="raw-health-data-input" class="w-full h-64 p-2 border rounded-md" placeholder="Ex: Salut general de..."></textarea></div></div><button id="translate-btn" class="bg-emerald-600 text-white font-bold py-2 px-4 rounded-md hover:bg-emerald-700">3. Traduir a JSON</button></div></div>
-        <div id="view-data-input" class="view"><div class="card"><h2 class="text-2xl font-bold mb-4">Guardar Nou Informe</h2><p class="mb-4 text-slate-600">Revisa les dades generades, assigna un nom a l'informe i guarda'l.</p><div class="mb-4"><label for="report-name" class="block text-sm font-medium">1. Nom de l'Informe (Obligatori)</label><input id="report-name" type="text" class="w-full p-2 border border-slate-300 rounded-md" placeholder="Ej: Informe IDIAP 2024"></div><div class="mb-4"><label for="json-input" class="block text-sm font-medium">2. Dades JSON (Generades per l'assistent)</label><textarea id="json-input" class="w-full h-64 p-2 border rounded-md" placeholder="Les dades traduïdes apareixeran aquí..."></textarea></div><div id="notification-area" class="mb-4"></div><button id="save-report-btn" class="bg-fuchsia-600 text-white font-bold py-2 px-4 rounded-md hover:bg-fuchsia-700">3. Guardar Informe</button></div></div>
+        <div id="view-data-assistant" class="view"><div class="card"><h2 class="text-2xl font-bold mb-2">Assistent Traductor de Dades</h2><p class="mb-4 text-slate-600">Aquesta eina t'ajuda a convertir les dades del teu informe a un format compatible.</p><div class="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 mb-4" role="alert"><p class="font-bold">Instruccions</p><ol class="list-decimal list-inside mt-2"><li>Obre el teu informe PSQCAT.</li><li>Copia el text COMPLET de la taula de riscos i la de salut.</li><li>Enganxa cada text al seu quadre corresponent.</li><li>Fes clic a "Traduir a JSON".</li></ol></div><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div class="mb-4"><label for="raw-risk-data-input" class="block text-sm font-medium">1. Enganxa aquí les dades de **Riscos**</label><textarea id="raw-risk-data-input" class="w-full h-64 p-2 border rounded-md" placeholder="Ex: Exigències quantitatives (N=87)	50,5747	34,4828	14,9425"></textarea></div><div class="mb-4"><label for="raw-health-data-input" class="block text-sm font-medium">2. Enganxa aquí les dades de **Salut i Benestar**</label><textarea id="raw-health-data-input" class="w-full h-64 p-2 border rounded-md" placeholder="Ex: Salut general de..."></textarea></div></div><button id="translate-btn" class="bg-emerald-600 text-white font-bold py-2 px-4 rounded-md hover:bg-emerald-700">3. Traduir a JSON</button></div></div>
+        <div id="view-data-input" class="view"><div class="card"><h2 class="text-2xl font-bold mb-4">Guardar Nou Informe</h2><p class="mb-4 text-slate-600">Revisa les dades generades, assigna un nom a l'informe i guarda'l.</p><div class="mb-4"><label for="report-name" class="block text-sm font-medium">1. Nom de l'Informe (Obligatori)</label><input id="report-name" type="text" class="w-full p-2 border border-slate-300 rounded-md" placeholder="Ex: Informe IDIAP 2024"></div><div class="mb-4"><label for="json-input" class="block text-sm font-medium">2. Dades JSON (Generades per l'assistent)</label><textarea id="json-input" class="w-full h-64 p-2 border rounded-md" placeholder="Les dades traduïdes apareixeran aquí..."></textarea></div><div id="notification-area" class="mb-4"></div><button id="save-report-btn" class="bg-fuchsia-600 text-white font-bold py-2 px-4 rounded-md hover:bg-fuchsia-700">3. Guardar Informe</button></div></div>
         <div id="view-reports" class="view"><div class="card"><h2 class="text-2xl font-bold mb-4">Els Meus Informes</h2><ul id="reports-list" class="space-y-3"></ul></div></div>
     </main>
 
+    <!-- Deletion Confirmation Modal -->
+    <div id="delete-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 modal-hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
+            <h3 class="text-lg font-bold mb-4">Confirmar Eliminació</h3>
+            <p class="text-slate-600 mb-6">Estàs segur que vols eliminar aquest informe? Aquesta acció no es pot desfer.</p>
+            <div class="flex justify-end gap-4">
+                <button id="cancel-delete-btn" class="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300">Cancel·lar</button>
+                <button id="confirm-delete-btn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+        // Use latest Firebase SDK versions
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         document.addEventListener('DOMContentLoaded', () => {
-            const firebaseConfig = {
-                apiKey: "AIzaSyBsRchId8KlzJfcaKuqeOFWPJcmopCq8V8",
-                authDomain: "informes-psqcat.firebaseapp.com",
-                projectId: "informes-psqcat",
-                storageBucket: "informes-psqcat.appspot.com",
-                messagingSenderId: "864424880028",
-                appId: "1:864424880028:web:2b27a50e28c3d4a1368a59",
-                measurementId: "G-30XQTHJG14"
-            };
+            // Standard Firebase and App ID configuration
+            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-psqcat-app';
 
             let db, auth, userId, selectedReport = null, reportsUnsubscribe = null;
             const charts = {};
@@ -87,7 +95,10 @@
                 rawHealthDataInput: document.getElementById('raw-health-data-input'),
                 translateBtn: document.getElementById('translate-btn'),
                 navToggle: document.getElementById('nav-toggle'),
-                sidebar: document.getElementById('sidebar')
+                sidebar: document.getElementById('sidebar'),
+                deleteModal: document.getElementById('delete-modal'),
+                cancelDeleteBtn: document.getElementById('cancel-delete-btn'),
+                confirmDeleteBtn: document.getElementById('confirm-delete-btn'),
             };
 
             function switchView(viewId) {
@@ -96,6 +107,7 @@
                 if (viewId === 'dashboard') renderDashboard();
             }
 
+            // Event Listeners
             DOM.navLinks.forEach(link => {
                 link.addEventListener('click', (e) => {
                     e.preventDefault();
@@ -112,7 +124,7 @@
                 const healthText = DOM.rawHealthDataInput.value;
                 
                 if (!riskText.trim()) {
-                    alert("Si us plau, enganxa el text de la taula de riscos.");
+                    renderNotification("Si us plau, enganxa el text de la taula de riscos.", 'error');
                     return;
                 }
                 
@@ -136,6 +148,7 @@
                     switchView('data-input');
                 } catch (e) {
                     renderNotification("Error en traduir les dades: " + e.message, 'error');
+                    console.error(e);
                 }
             }
 
@@ -160,52 +173,82 @@
                 return dimensions;
             }
 
+            /**
+             * [CORE IMPROVEMENT] This function is rewritten to be more robust.
+             * It finds sections based on keywords and then finds groups within each section,
+             * avoiding complex and fragile regular expressions.
+             */
             function parseHealthMetrics(text) {
                 const metrics = {
                     generalhealth: {}, satisfaction: {}, stress: {}, burnout: {}, salutmental: {}
                 };
                 if (!text.trim()) return metrics;
 
-                const metricKeywords = ['Salut general de', 'Salut mental de', 'Estrès de', 'Burnout de', 'Satisfacció de'];
-                
-                metricKeywords.forEach(keyword => {
-                    const key = keyword.replace(' de', '').toLowerCase().replace('è', 'e').replace(' ', '');
-                    const regex = new RegExp(`${keyword}[\\s\\S]*?(?=(${metricKeywords.join('|')})|$)`);
-                    const sectionMatch = text.match(regex);
+                const metricDefinitions = [
+                    { keyword: 'Salut general de', key: 'generalhealth' },
+                    { keyword: 'Salut mental de', key: 'salutmental' },
+                    { keyword: 'Estrès de', key: 'stress' },
+                    { keyword: 'Burnout de', key: 'burnout' },
+                    { keyword: 'Satisfacció de', key: 'satisfaction' }
+                ];
+
+                const keywordLocations = metricDefinitions
+                    .map(def => ({ ...def, index: text.indexOf(def.keyword) }))
+                    .filter(loc => loc.index !== -1)
+                    .sort((a, b) => a.index - b.index);
+
+                if (keywordLocations.length === 0) return metrics;
+
+                for (let i = 0; i < keywordLocations.length; i++) {
+                    const start = keywordLocations[i].index;
+                    const end = (i + 1 < keywordLocations.length) ? keywordLocations[i + 1].index : text.length;
+                    const sectionText = text.substring(start, end);
+                    const currentKey = keywordLocations[i].key;
+
+                    const dataForMetric = {};
+                    const groups = ['TOTS', 'DONES', 'HOMES'];
                     
-                    if (sectionMatch) {
-                        const sectionText = sectionMatch[0];
-                        const data = {};
-                        ['TOTS', 'DONES', 'HOMES'].forEach(group => {
-                            const groupRegex = new RegExp(`${group}([\\s\\S]*?)(?=(DONES|HOMES|${metricKeywords.join('|')})|$)`);
-                            const groupMatch = sectionText.match(groupRegex);
-                            if (groupMatch) {
-                                const groupData = {};
-                                const ageRanges = ["Menys de 31 anys", "Entre 31 - 45 anys", "Més de 45 anys"];
-                                ageRanges.forEach(age => {
-                                    const ageRegex = new RegExp(`${age}\\s*([\\d,]+)\\s*([\\d,]+)\\s*([\\d,]+)\\s*([\\d,]*)`);
-                                    const ageMatch = groupMatch[1] ? groupMatch[1].match(ageRegex) : null;
-                                    if (ageMatch) {
-                                        const values = ageMatch.slice(1).filter(Boolean).map(v => parseFloat(v.replace(',', '.')));
-                                        let ageKey = '';
-                                        if (age.includes('Menys de 31')) ageKey = 'under31';
-                                        if (age.includes('Entre 31')) ageKey = 'between31_45';
-                                        if (age.includes('Més de 45')) ageKey = 'over45';
-                                        groupData[ageKey] = values;
-                                    }
-                                });
-                                data[group.toLowerCase()] = groupData;
+                    const groupLocations = groups
+                        .map(g => ({ group: g, index: sectionText.indexOf(g) }))
+                        .filter(loc => loc.index !== -1)
+                        .sort((a, b) => a.index - b.index);
+
+                    if (groupLocations.length === 0) continue;
+
+                    for (let j = 0; j < groupLocations.length; j++) {
+                        const groupStart = groupLocations[j].index;
+                        const groupEnd = (j + 1 < groupLocations.length) ? groupLocations[j + 1].index : sectionText.length;
+                        const groupText = sectionText.substring(groupStart, groupEnd);
+                        const groupKey = groupLocations[j].group.toLowerCase();
+
+                        const dataForGroup = {};
+                        const ageRanges = ["Menys de 31 anys", "Entre 31 - 45 anys", "Més de 45 anys"];
+                        ageRanges.forEach(age => {
+                            const ageRegex = new RegExp(`${age.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}[\\s\\t]+([\\d,.]+)[\\s\\t]*([\\d,.]+)?[\\s\\t]*([\\d,.]+)?[\\s\\t]*([\\d,.]*)?`);
+                            const ageMatch = groupText.match(ageRegex);
+                            
+                            if (ageMatch) {
+                                const values = ageMatch.slice(1).filter(v => v != null && v.trim() !== '').map(v => parseFloat(v.replace(',', '.')));
+                                let ageKey = '';
+                                if (age.includes('Menys de 31')) ageKey = 'under31';
+                                else if (age.includes('Entre 31')) ageKey = 'between31_45';
+                                else if (age.includes('Més de 45')) ageKey = 'over45';
+                                
+                                if (ageKey && values.length > 0) {
+                                    dataForGroup[ageKey] = values;
+                                }
                             }
                         });
-                        metrics[key] = data;
+                        dataForMetric[groupKey] = dataForGroup;
                     }
-                });
+                    metrics[currentKey] = dataForMetric;
+                }
                 return metrics;
             }
 
             function renderNotification(message, type = 'success') {
                 const color = type === 'success' ? 'green' : 'red';
-                DOM.notificationArea.innerHTML = `<div class="bg-${color}-100 border border-${color}-400 text-${color}-700 px-4 py-3 rounded-md">${message}</div>`;
+                DOM.notificationArea.innerHTML = `<div class="bg-${color}-100 border border-${color}-400 text-${color}-700 px-4 py-3 rounded-md relative" role="alert"><span class="block sm:inline">${message}</span></div>`;
                 setTimeout(() => DOM.notificationArea.innerHTML = '', 5000);
             }
 
@@ -217,14 +260,21 @@
                             <span class="font-medium">${report.name}</span>
                             <div class="flex items-center gap-2">
                                 <button data-report-id="${report.id}" class="view-dashboard-btn text-sm bg-sky-500 text-white py-1 px-3 rounded-md hover:bg-sky-600">Veure</button>
-                                <button data-report-id="${report.id}" class="delete-report-btn text-sm bg-red-500 text-white p-2 rounded-md hover:bg-red-600">X</button>
+                                <button data-report-id="${report.id}" class="delete-report-btn text-sm bg-red-500 text-white p-2 rounded-full hover:bg-red-600 flex items-center justify-center w-6 h-6">X</button>
                             </div>
                         </li>`).join('');
+                
+                // Re-attach event listeners after rendering
+                document.querySelectorAll('.view-dashboard-btn').forEach(btn => btn.onclick = (e) => {
+                    selectedReport = reports.find(r => r.id === e.currentTarget.dataset.reportId);
+                    switchView('dashboard');
+                });
+                document.querySelectorAll('.delete-report-btn').forEach(btn => btn.onclick = (e) => deleteReport(e.currentTarget.dataset.reportId));
             }
 
             function renderDashboard() {
                 if (!selectedReport) {
-                    DOM.dashboardContent.innerHTML = `<div class="card text-center"><h2 class="text-2xl font-bold">Benvingut</h2><p class="mt-2">No hi ha cap informe seleccionat. Ves a "Els Meus Informes" per triar-ne un.</p></div>`;
+                    DOM.dashboardContent.innerHTML = `<div class="card text-center"><h2 class="text-2xl font-bold">Benvingut</h2><p class="mt-2 text-slate-600">No hi ha cap informe seleccionat. Ves a "Els Meus Informes" per triar-ne un o a "Assistent de Dades" per crear-ne un de nou.</p></div>`;
                     return;
                 }
                 try {
@@ -263,12 +313,13 @@
                             </div>
                             <div class="card">
                                  <h3 class="text-2xl font-bold mb-4">Anàlisi i Recomanacions d'IA</h3>
-                                <div id="conclusions-content" class="text-slate-600 space-y-2 prose">
-                                   <p>Fes clic al botó per generar una anàlisi i recomanacions basades en les dades d'aquest informe.</p>
-                                </div>
-                                <button id="generate-conclusions-btn" class="mt-4 bg-indigo-600 text-white font-bold py-2 px-4 rounded-md hover:bg-indigo-700">
-                                    Generar Anàlisi amb IA
-                                </button>
+                                 <div id="conclusions-content" class="text-slate-600 space-y-2 prose max-w-none">
+                                     <p>Fes clic al botó per generar una anàlisi i recomanacions basades en les dades d'aquest informe.</p>
+                                 </div>
+                                 <button id="generate-conclusions-btn" class="mt-4 bg-indigo-600 text-white font-bold py-2 px-4 rounded-md hover:bg-indigo-700 flex items-center gap-2 disabled:opacity-50">
+                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 00-9.95 9.5c.05.59.41 1.05.95 1.05h18c.54 0 .9-.46.95-1.05A10 10 0 0012 2z"/><path d="M12 12v10M12 2L4.5 4.5M12 2l7.5 2.5"/></svg>
+                                     Generar Anàlisi amb IA
+                                 </button>
                             </div>
                         </div>
                     `;
@@ -277,6 +328,7 @@
                     document.getElementById('generate-conclusions-btn').addEventListener('click', () => generateConclusions(data));
                 } catch (e) {
                     DOM.dashboardContent.innerHTML = `<div class="card text-red-600">Error en processar les dades de l'informe: ${e.message}</div>`;
+                    console.error(e);
                 }
             }
             
@@ -289,19 +341,23 @@
                 container.innerHTML = '';
                 Object.values(charts).forEach(chart => chart.destroy());
                 
-                if (!data.healthMetrics) return;
+                if (!data.healthMetrics) {
+                     container.innerHTML = "<p>No s'han trobat dades de salut per visualitzar.</p>";
+                     return;
+                }
 
                 const metrics = [
-                    { key: 'generalhealth', title: 'Salut General', labels: ['Excel·lent/Bona', 'Bona', 'Regular/Dolenta'] },
+                    { key: 'generalhealth', title: 'Salut General', labels: ['Excel·lent/Bona', 'Regular', 'Dolenta/Molt Dolenta'] },
                     { key: 'salutmental', title: 'Salut Mental', labels: ['Superior', 'Mitjà', 'Inferior'] },
                     { key: 'stress', title: 'Estrès', labels: ['Baix (Verd)', 'Mitjà (Groc)', 'Alt (Vermell)'] },
                     { key: 'burnout', title: 'Burnout', labels: ['Baix (Verd)', 'Mitjà (Groc)', 'Alt (Vermell)'] },
                     { key: 'satisfaction', title: 'Satisfacció', labels: ['Molt Satisfet', 'Satisfet', 'Insatisfet', 'Molt Insatisfet'] }
                 ];
 
+                let chartsRendered = 0;
                 metrics.forEach(metric => {
                     const metricData = data.healthMetrics[metric.key];
-                    if (!metricData || !metricData.dones || !metricData.homes) return;
+                    if (!metricData || (!metricData.dones && !metricData.homes)) return;
 
                     let donesData = [], homesData = [];
                     if (ageGroupKey === 'tots') {
@@ -311,11 +367,11 @@
                             let donesSum = 0, donesCount = 0;
                             let homesSum = 0, homesCount = 0;
                             ageKeys.forEach(ageKey => {
-                                if (metricData.dones[ageKey] && metricData.dones[ageKey][i] !== undefined) {
+                                if (metricData.dones && metricData.dones[ageKey] && metricData.dones[ageKey][i] !== undefined) {
                                     donesSum += metricData.dones[ageKey][i];
                                     donesCount++;
                                 }
-                                if (metricData.homes[ageKey] && metricData.homes[ageKey][i] !== undefined) {
+                                if (metricData.homes && metricData.homes[ageKey] && metricData.homes[ageKey][i] !== undefined) {
                                     homesSum += metricData.homes[ageKey][i];
                                     homesCount++;
                                 }
@@ -324,14 +380,14 @@
                             homesData.push(homesCount > 0 ? homesSum / homesCount : 0);
                         }
                     } else {
-                        donesData = metricData.dones[ageGroupKey] || [];
-                        homesData = metricData.homes[ageGroupKey] || [];
+                        donesData = (metricData.dones && metricData.dones[ageGroupKey]) ? metricData.dones[ageGroupKey] : [];
+                        homesData = (metricData.homes && metricData.homes[ageGroupKey]) ? metricData.homes[ageGroupKey] : [];
                     }
 
                     if (donesData.length === 0 && homesData.length === 0) return;
+                    chartsRendered++;
 
                     const card = document.createElement('div');
-                    card.className = 'card';
                     card.innerHTML = `<h4 class="text-lg font-semibold text-center mb-2">${metric.title}</h4><canvas id="${metric.key}-chart"></canvas>`;
                     container.appendChild(card);
 
@@ -347,6 +403,9 @@
                         options: { responsive: true, indexAxis: 'y', plugins: { legend: { position: 'bottom' } }, scales: { x: { suggestedMax: 100, beginAtZero: true } } }
                     });
                 });
+                if(chartsRendered === 0) {
+                    container.innerHTML = "<p>No s'han trobat dades de salut per al filtre seleccionat.</p>";
+                }
             }
             
             function getKarasekModelSVG(data) {
@@ -366,15 +425,17 @@
                 if (demandaScore >= 50 && controlScore >= 50) { x = 100; y = 80; } // Activo
                 if (demandaScore < 50 && controlScore < 50) { x = 300; y = 220; } // Pasivo
 
-                return `<g fill="none" stroke="#334155" stroke-width="1"><path d="M200 0 V300 M0 150 H400"/></g><g text-anchor="middle" font-size="14" font-family="Inter, sans-serif"><text x="100" y="80" fill="#059669">Treball Actiu</text><text x="300" y="220" fill="#dc2626">Treball Passiu</text><text x="300" y="80" fill="#ef4444">Alta Tensió</text><text x="100" y="220" fill="#65a30d">Baixa Tensió</text><text x="200" y="140" font-weight="bold">CONTROL</text><text x="30" y="155" transform="rotate(-90 30 155)" font-weight="bold">DEMANDA</text><g stroke="#c026d3" stroke-width="2" fill="#c026d3" fill-opacity="0.2"><rect x="${x-40}" y="${y-30}" width="80" height="60" rx="10"/><text x="${x}" y="${y+5}" fill="#c026d3" font-size="12" font-weight="bold">Equip</text></g></g>`;
+                return `<g fill="none" stroke="#334155" stroke-width="1"><path d="M200 0 V300 M0 150 H400"/></g><g text-anchor="middle" font-size="14" font-family="Inter, sans-serif"><text x="100" y="80" fill="#059669">Treball Actiu</text><text x="300" y="80" fill="#ef4444">Alta Tensió</text><text x="100" y="220" fill="#65a30d">Baixa Tensió</text><text x="300" y="220" fill="#dc2626">Treball Passiu</text><text x="200" y="140" font-weight="bold">CONTROL</text><text x="30" y="155" transform="rotate(-90 30 155)" font-weight="bold">DEMANDA</text><g stroke="#c026d3" stroke-width="2" fill="#c026d3" fill-opacity="0.2"><rect x="${x-40}" y="${y-30}" width="80" height="60" rx="10"/><text x="${x}" y="${y+5}" fill="#c026d3" font-size="12" font-weight="bold">Equip</text></g></g>`;
             }
             
             async function generateConclusions(data) {
+                const btn = document.getElementById('generate-conclusions-btn');
                 const conclusionsContent = document.getElementById('conclusions-content');
+                btn.disabled = true;
                 conclusionsContent.innerHTML = '<div class="flex items-center gap-2"><div class="loader"></div><span>Generant anàlisi... Si us plau, espera.</span></div>';
 
-                const dimensionsText = data.dimensions.map(d => `- ${d.name}: ${d.unfavorable}% desfavorable`).join('\n');
-                const prompt = `Ets un expert consultor en prevenció de riscos laborals i salut organitzacional, especialitzat en el mètode CoPsoQ PSQCAT i el model Demanda-Control de Karasek. Analitza les següents dades d'un informe per a l'empresa ${data.metadata.company}. Les dades són:\n\n**DADES DE RISCOS PSICOSOCIALS (Percentatge d'exposició desfavorable):**\n${dimensionsText}\n\nBasat en aquest conjunt de dades, redacta una anàlisi professional i accionable en català. L'estructura ha de ser la següent:\n\n**1. Anàlisi segons el Model Demanda-Control (Karasek):**\nIndica a quin quadrant se situa l'equip (ex. "Alta Tensió", "Treball Actiu", etc.) basant-te en les puntuacions d'exigències (demanda) i control (influència, desenvolupament). Explica què implica aquesta situació per a l'equip.\n\n**2. Àrees Crítiques d'Intervenció (Factors de Risc Alts):**\nLlista les dimensions amb els percentatges d'exposició desfavorable més alts (superiors al 50%). Per a cadascuna, explica breument què significa aquest risc a la pràctica.\n\n**3. Punts Forts i Factors Protectors:**\nLlista les dimensions amb millors resultats (més favorables). Explica per què són importants i com es poden fer servir com a palanca per millorar altres àrees.\n\n**4. Pla d'Acció Recomanat:**\nUna secció final amb recomanacions clares i específiques. Indica on ha d'actuar l'empresa. Per a les 2-3 àrees més crítiques, proposa 1-2 accions concretes i pràctiques que la direcció pot implementar.\n\nEl to ha de ser constructiu, professional i orientat a solucions. Formata la resposta usant Markdown amb títols (##) i llistes amb guions (-).`;
+                const dimensionsText = data.dimensions.map(d => `- ${d.name}: ${d.unfavorable.toFixed(1)}% desfavorable`).join('\n');
+                const prompt = `Ets un expert consultor en prevenció de riscos laborals i salut organitzacional, especialitzat en el mètode CoPsoQ PSQCAT i el model Demanda-Control de Karasek. Analitza les següents dades d'un informe per a l'empresa ${data.metadata.company}. Les dades són:\n\n**DADES DE RISCOS PSICOSOCIALS (Percentatge d'exposició desfavorable):**\n${dimensionsText}\n\nBasat en aquest conjunt de dades, redacta una anàlisi professional i accionable en català. L'estructura ha de ser la següent:\n\n**1. Anàlisi segons el Model Demanda-Control (Karasek):**\nIndica a quin quadrant se situa l'equip (ex. "Alta Tensió", "Treball Actiu", etc.) basant-te en les puntuacions d'exigències (demanda) i control (influència, desenvolupament). Explica què implica aquesta situació per a l'equip.\n\n**2. Àrees Crítiques d'Intervenció (Factors de Risc Alts):**\nLlista les dimensions amb els percentatges d'exposició desfavorable més alts (superiors al 50%). Per a cadascuna, explica breument què significa aquest risc a la pràctica.\n\n**3. Punts Forts i Factors Protectors:**\nLlista les dimensions amb millors resultats (més favorables o menys desfavorables). Explica per què són importants i com es poden fer servir com a palanca per millorar altres àrees.\n\n**4. Pla d'Acció Recomanat:**\nUna secció final amb recomanacions clares i específiques. Indica on ha d'actuar l'empresa. Per a les 2-3 àrees més crítiques, proposa 1-2 accions concretes i pràctiques que la direcció pot implementar.\n\nEl to ha de ser constructiu, professional i orientat a solucions. Formata la resposta usant Markdown amb títols en negreta (**Títol**) i llistes amb guions (-).`;
 
                 try {
                     const apiKey = ""; // Canvas will provide the key
@@ -388,13 +449,14 @@
                     const analysisText = result.candidates[0].content.parts[0].text;
                     
                     conclusionsContent.innerHTML = analysisText
-                        .replace(/## (.*?)\n/g, '<h4 class="font-bold text-lg mt-4 mb-2">$1</h4>')
-                        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-                        .replace(/- (.*?)(?=\n- |\n<br>|$)/g, '<li class="ml-4 list-disc">$1</li>')
+                        .replace(/\*\*(.*?)\*\*/g, '<h4 class="font-bold text-lg mt-4 mb-2">$1</h4>')
+                        .replace(/^- (.*?)$/gm, '<li class="ml-4 list-disc">$1</li>')
                         .replace(/\n/g, '<br>');
 
                 } catch (error) {
                     conclusionsContent.innerHTML = `<p class="text-red-600">Error en generar l'anàlisi: ${error.message}</p>`;
+                } finally {
+                    btn.disabled = false;
                 }
             }
 
@@ -402,57 +464,107 @@
                 const name = DOM.reportNameInput.value.trim();
                 const json = DOM.jsonInput.value.trim();
                 if (!name) { renderNotification("Introdueix un nom per a l'informe.", 'error'); return; }
-                if (!userId) { renderNotification("No s'ha pogut autenticar.", 'error'); return; }
+                if (!userId) { renderNotification("No s'ha pogut autenticar. Recarrega la pàgina.", 'error'); return; }
                 try {
-                    const parsedData = JSON.parse(json);
-                    if (!parsedData.metadata || !parsedData.dimensions) throw new Error("Format JSON invàlid.");
-                    await addDoc(collection(db, `users/${userId}/reports`), { name, data: json, createdAt: new Date() });
+                    JSON.parse(json); // Validate JSON before saving
+                    const reportCollection = collection(db, `artifacts/${appId}/users/${userId}/reports`);
+                    await addDoc(reportCollection, { name, data: json, createdAt: new Date() });
                     renderNotification(`Informe "${name}" guardat.`, 'success');
                     DOM.reportNameInput.value = '';
                     DOM.jsonInput.value = '';
+                    switchView('reports');
                 } catch (e) {
-                    renderNotification(`Error: ${e.message}`, 'error');
+                    renderNotification(`Error en guardar: ${e.message}`, 'error');
                 }
             }
 
             async function deleteReport(reportId) {
                 if (!db || !userId) return;
-                if (confirm("Segur que vols eliminar aquest informe?")) {
-                    await deleteDoc(doc(db, `users/${userId}/reports`, reportId));
-                    if (selectedReport && selectedReport.id === reportId) {
-                        selectedReport = null;
-                        renderDashboard();
+                
+                DOM.deleteModal.classList.remove('modal-hidden');
+
+                const userConfirmed = await new Promise(resolve => {
+                    DOM.confirmDeleteBtn.onclick = () => resolve(true);
+                    DOM.cancelDeleteBtn.onclick = () => resolve(false);
+                });
+
+                DOM.deleteModal.classList.add('modal-hidden');
+
+                if (userConfirmed) {
+                    try {
+                        await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/reports`, reportId));
+                        renderNotification('Informe eliminat correctament.', 'success');
+                        if (selectedReport && selectedReport.id === reportId) {
+                            selectedReport = null;
+                            renderDashboard();
+                        }
+                    } catch (e) {
+                         renderNotification(`Error en eliminar l'informe: ${e.message}`, 'error');
                     }
                 }
             }
 
             function listenToReports() {
                 if (reportsUnsubscribe) reportsUnsubscribe();
-                const q = query(collection(db, `users/${userId}/reports`), orderBy("createdAt", "desc"));
+                if (!userId) return;
+                const q = query(collection(db, `artifacts/${appId}/users/${userId}/reports`), orderBy("createdAt", "desc"));
                 reportsUnsubscribe = onSnapshot(q, (snapshot) => {
                     const reports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     renderReportsList(reports);
-                    document.querySelectorAll('.view-dashboard-btn').forEach(btn => btn.onclick = (e) => {
-                        selectedReport = reports.find(r => r.id === e.currentTarget.dataset.reportId);
-                        switchView('dashboard');
-                    });
-                    document.querySelectorAll('.delete-report-btn').forEach(btn => btn.onclick = (e) => deleteReport(e.currentTarget.dataset.reportId));
+                }, (error) => {
+                    console.error("Error listening to reports:", error);
+                    renderNotification("No s'ha pogut carregar la llista d'informes.", "error");
                 });
             }
 
+            async function initializeAuth() {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (error) {
+                    console.error("Authentication failed:", error);
+                    DOM.dashboardContent.innerHTML = `<div class="card text-red-600">Error d'autenticació. No es poden carregar ni guardar informes.</div>`;
+                }
+            }
+
             function init() {
+                if (!firebaseConfig.apiKey) {
+                    DOM.dashboardContent.innerHTML = `<div class="card text-center"><h2 class="text-2xl font-bold text-red-600">Error de Configuració</h2><p class="mt-2 text-slate-600">La configuració del servei de dades no està disponible. Algunes funcionalitats com guardar i carregar informes estan desactivades.</p></div>`;
+                    // Disable features requiring firebase
+                    DOM.saveReportBtn.disabled = true;
+                    DOM.navLinks.forEach(link => {
+                        if(link.dataset.view === 'reports' || link.dataset.view === 'data-input') {
+                            link.parentElement.classList.add('opacity-50', 'pointer-events-none');
+                        }
+                    });
+                    return;
+                }
+
                 try {
                     const app = initializeApp(firebaseConfig);
                     auth = getAuth(app);
                     db = getFirestore(app);
+                    setLogLevel('error'); // Change to 'debug' for detailed logs
+
                     onAuthStateChanged(auth, user => {
-                        if (user) { userId = user.uid; listenToReports(); } 
-                        else { signInAnonymously(auth).catch(e => console.error("Sign-in failed:", e)); }
+                        if (user) {
+                            userId = user.uid;
+                            listenToReports();
+                        } else {
+                            userId = null;
+                            if(reportsUnsubscribe) reportsUnsubscribe();
+                            renderReportsList([]);
+                        }
                     });
+                    
+                    initializeAuth();
                     renderDashboard();
                 } catch (error) {
                     console.error("Firebase init failed:", error);
-                    DOM.dashboardContent.innerHTML = `<div class="card text-red-600">Error d'inicialització.</div>`;
+                    DOM.dashboardContent.innerHTML = `<div class="card text-red-600">Error d'inicialització del servei.</div>`;
                 }
             }
 
