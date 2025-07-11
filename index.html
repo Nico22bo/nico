@@ -1,388 +1,464 @@
 <!DOCTYPE html>
-<html lang="ca">
+<html lang="es" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Infografia: Formació Pilot Impulsa+45</title>
+    <title>Generador de Dashboards amb Anàlisi de Salut (Versió Corregida)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        .chart-container {
-            position: relative;
-            width: 100%;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-            height: 300px;
-            max-height: 400px;
-        }
-        @media (min-width: 768px) {
-            .chart-container {
-                height: 350px;
-            }
-        }
-        .flow-step {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            border: 2px solid;
-            min-height: 80px;
-            font-weight: 600;
-        }
-        .flow-arrow {
-            font-size: 2.5rem;
-            font-weight: 900;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .flow-container {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1rem;
-            align-items: center;
-        }
-        @media (min-width: 768px) {
-            .flow-container {
-                grid-template-columns: repeat(7, 1fr);
-            }
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        .card { background-color: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); padding: 1.5rem; }
+        .view { display: none; }
+        .view.active { display: block; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #c026d3; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #sidebar { transform: translateX(-100%); transition: transform 0.3s ease-in-out; }
+        #sidebar.open { transform: translateX(0); }
+        @media (min-width: 1024px) { #sidebar { transform: translateX(0); } }
+        .prose h4 { font-size: 1.125rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; }
+        .prose ul { list-style-position: inside; }
+        .prose li { margin-left: 1rem; }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="text-slate-700">
 
-    <div class="container mx-auto p-4 md:p-8">
+    <!-- Sidebar Navigation -->
+    <aside id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-slate-800 text-white p-6 overflow-y-auto z-40">
+        <div class="mb-10 text-center">
+            <h1 class="text-2xl font-bold">CoPsoQ <span class="text-fuchsia-400">psqcat</span></h1>
+            <p class="text-sm text-slate-400">Generador d'Informes</p>
+        </div>
+        <nav>
+            <ul class="space-y-2" id="nav-links">
+                <li><a href="#dashboard" data-view="dashboard" class="nav-link flex items-center p-2 rounded-md hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3"><path d="M12 20V10M18 20V4M6 20V16"/></svg>Dashboard</a></li>
+                <li><a href="#data-assistant" data-view="data-assistant" class="nav-link flex items-center p-2 rounded-md hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3"><path d="M12 2a10 10 0 00-9.95 9.5c.05.59.41 1.05.95 1.05h18c.54 0 .9-.46.95-1.05A10 10 0 0012 2z"/><path d="M12 12v10M12 2L4.5 4.5M12 2l7.5 2.5"/></svg>Assistent de Dades</a></li>
+                <li><a href="#data-input" data-view="data-input" class="nav-link flex items-center p-2 rounded-md hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Guardar Informe</a></li>
+                <li><a href="#reports" data-view="reports" class="nav-link flex items-center p-2 rounded-md hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Els Meus Informes</a></li>
+            </ul>
+        </nav>
+    </aside>
 
-        <header class="text-center mb-12">
-            <h1 class="text-4xl md:text-6xl font-black text-[#FF6B6B] uppercase tracking-tighter">Formació Pilot</h1>
-            <h2 class="text-3xl md:text-5xl font-extrabold text-[#45B7D1]">Tastet Impulsa+45</h2>
-            <p class="mt-4 text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">Una demostració pràctica de com transformar el treball quotidià amb Intel·ligència Artificial en només 6 hores.</p>
-        </header>
+    <!-- Mobile Nav Toggle -->
+    <button id="nav-toggle" class="lg:hidden fixed top-4 left-4 z-50 bg-white p-2 rounded-md shadow-lg">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" /></svg>
+    </button>
 
-        <main class="space-y-12">
+    <!-- Main Content -->
+    <main class="lg:ml-64 p-6 md:p-8">
+        <div id="view-dashboard" class="view active"><div id="dashboard-content"></div></div>
+        <div id="view-data-assistant" class="view"><div class="card"><h2 class="text-2xl font-bold mb-2">Assistent Traductor de Dades</h2><p class="mb-4 text-slate-600">Aquesta eina t'ajuda a convertir les dades del teu informe a un format compatible.</p><div class="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 mb-4" role="alert"><p class="font-bold">Instruccions</p><ol class="list-decimal list-inside mt-2"><li>Obre el teu informe PSQCAT.</li><li>Copia el text de la taula de riscos i la de salut.</li><li>Enganxa cada text al seu quadre corresponent.</li><li>Fes clic a "Traduir a JSON".</li></ol></div><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div class="mb-4"><label for="raw-risk-data-input" class="block text-sm font-medium">1. Enganxa aquí les dades de **Riscos**</label><textarea id="raw-risk-data-input" class="w-full h-64 p-2 border rounded-md" placeholder="Ex: Exigències quantitatives (N=87)	50,5747	34,4828	14,9425"></textarea></div><div class="mb-4"><label for="raw-health-data-input" class="block text-sm font-medium">2. Enganxa aquí les dades de **Salut i Benestar**</label><textarea id="raw-health-data-input" class="w-full h-64 p-2 border rounded-md" placeholder="Ex: Salut general de..."></textarea></div></div><button id="translate-btn" class="bg-emerald-600 text-white font-bold py-2 px-4 rounded-md hover:bg-emerald-700">3. Traduir a JSON</button></div></div>
+        <div id="view-data-input" class="view"><div class="card"><h2 class="text-2xl font-bold mb-4">Guardar Nou Informe</h2><p class="mb-4 text-slate-600">Revisa les dades generades, assigna un nom a l'informe i guarda'l.</p><div class="mb-4"><label for="report-name" class="block text-sm font-medium">1. Nom de l'Informe (Obligatori)</label><input id="report-name" type="text" class="w-full p-2 border border-slate-300 rounded-md" placeholder="Ej: Informe IDIAP 2024"></div><div class="mb-4"><label for="json-input" class="block text-sm font-medium">2. Dades JSON (Generades per l'assistent)</label><textarea id="json-input" class="w-full h-64 p-2 border rounded-md" placeholder="Les dades traduïdes apareixeran aquí..."></textarea></div><div id="notification-area" class="mb-4"></div><button id="save-report-btn" class="bg-fuchsia-600 text-white font-bold py-2 px-4 rounded-md hover:bg-fuchsia-700">3. Guardar Informe</button></div></div>
+        <div id="view-reports" class="view"><div class="card"><h2 class="text-2xl font-bold mb-4">Els Meus Informes</h2><ul id="reports-list" class="space-y-3"></ul></div></div>
+    </main>
 
-            <section id="overview" class="bg-white rounded-2xl shadow-lg p-6 md:p-8">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-                    <div class="flex flex-col items-center justify-center p-6 bg-[#4ECDC4] text-white rounded-xl shadow-md">
-                        <span class="text-6xl font-black">2</span>
-                        <span class="text-2xl font-bold">Sessions</span>
-                    </div>
-                    <div class="flex flex-col items-center justify-center p-6 bg-[#45B7D1] text-white rounded-xl shadow-md">
-                        <span class="text-6xl font-black">6</span>
-                        <span class="text-2xl font-bold">Hores</span>
-                    </div>
-                    <div class="flex flex-col items-center justify-center p-6 bg-[#FF6B6B] text-white rounded-xl shadow-md">
-                        <span class="text-6xl font-black">1</span>
-                        <span class="text-2xl font-bold">Objectiu Disruptiu</span>
-                    </div>
-                </div>
-                <div class="mt-8">
-                    <h3 class="text-2xl font-bold text-center mb-4 text-[#4ECDC4]">Distribució de la Formació</h3>
-                     <p class="text-center text-gray-600 mb-6 max-w-2xl mx-auto">El programa es divideix en dues sessions de 3 hores, cadascuna enfocada a desenvolupar un conjunt diferent de "superpoders" digitals, garantint una experiència d'aprenentatge equilibrada i completa.</p>
-                    <div class="chart-container h-64 md:h-80">
-                        <canvas id="sessionsChart"></canvas>
-                    </div>
-                </div>
-            </section>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
-            <section id="session1" class="space-y-8">
-                <div class="text-center">
-                    <h2 class="text-3xl md:text-4xl font-extrabold text-[#45B7D1]">Sessió 1: De la Idea a la Comunicació en Minuts</h2>
-                    <p class="mt-2 text-lg text-gray-600 max-w-3xl mx-auto">Aquesta primera fase demostra la capacitat de la IA per actuar com un soci estratègic, generant idees complexes i creant plans de comunicació multicanal de manera quasi instantània.</p>
-                </div>
-                
-                <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8">
-                    <h3 class="text-2xl font-bold text-center mb-6 text-[#4ECDC4]">Flux de Treball de la Sessió 1</h3>
-                    <div class="flow-container">
-                        <div class="flow-step border-[#FF6B6B] text-[#FF6B6B]">Repte Inicial</div>
-                        <div class="flow-arrow text-gray-300 hidden md:flex">➔</div>
-                        <div class="flow-step border-[#4ECDC4] text-[#4ECDC4]">Brainstorming Exponencial</div>
-                        <div class="flow-arrow text-gray-300 hidden md:flex">➔</div>
-                        <div class="flow-step border-[#45B7D1] text-[#45B7D1]">Desenvolupament del Pla</div>
-                        <div class="flow-arrow text-gray-300 hidden md:flex">➔</div>
-                        <div class="flow-step border-[#F7B801] text-[#F7B801]">Comunicació Total</div>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8">
-                    <h3 class="text-2xl font-bold text-center mb-4 text-[#4ECDC4]">Distribució del Temps</h3>
-                    <p class="text-center text-gray-600 mb-6 max-w-2xl mx-auto">Cada minut està optimitzat per a l'acció i el descobriment, amb un enfocament pràctic que maximitza l'aprenentatge en un temps rècord.</p>
-                    <div class="chart-container">
-                        <canvas id="session1TimingChart"></canvas>
-                    </div>
-                </div>
-            </section>
-            
-            <section id="session2" class="space-y-8">
-                <div class="text-center">
-                    <h2 class="text-3xl md:text-4xl font-extrabold text-[#F7B801]">Sessió 2: De la Imatge a l'Estratègia</h2>
-                    <p class="mt-2 text-lg text-gray-600 max-w-3xl mx-auto">La segona part va més enllà del text per explorar la creació de contingut multimèdia i l'ús de la IA com a eina d'anàlisi per resoldre problemàtiques socials complexes.</p>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8">
-                        <h3 class="text-2xl font-bold text-center mb-4 text-[#4ECDC4]">Competències Desenvolupades</h3>
-                         <p class="text-center text-gray-600 mb-6">Els participants adquireixen un ventall de competències que abasten des de la creativitat visual fins a l'anàlisi estratègica de dades, preparant-los per a reptes diversos.</p>
-                        <div class="chart-container h-80 md:h-96">
-                            <canvas id="session2SkillsChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8 flex flex-col justify-center">
-                        <h3 class="text-2xl font-bold text-center mb-6 text-[#4ECDC4]">Resultats Tangibles</h3>
-                        <ul class="space-y-4 text-lg">
-                            <li class="flex items-start"><span class="text-2xl mr-3 text-[#FF6B6B]">🎨</span> <div><span class="font-bold">Identitat Visual:</span> Creació de logos i cartells promocionals únics.</div></li>
-                            <li class="flex items-start"><span class="text-2xl mr-3 text-[#4ECDC4]">🖼️</span> <div><span class="font-bold">Imatges d'Impacte:</span> Generació d'imatges hiperrealistes per a campanyes.</div></li>
-                            <li class="flex items-start"><span class="text-2xl mr-3 text-[#45B7D1]">📈</span> <div><span class="font-bold">Anàlisi Estratègica:</span> Realització d'anàlisis DAFO sobre problemàtiques reals.</div></li>
-                            <li class="flex items-start"><span class="text-2xl mr-3 text-[#F7B801]">🎯</span> <div><span class="font-bold">Plans d'Acció:</span> Disseny de plans de xoc amb iniciatives concretes i mesurables.</div></li>
-                        </ul>
-                    </div>
-                </div>
-            </section>
-            
-            <section id="takeaways">
-                <div class="text-center">
-                    <h2 class="text-3xl md:text-4xl font-extrabold text-[#FF6B6B]">Les Claus de l'Èxit</h2>
-                    <p class="mt-2 text-lg text-gray-600 max-w-3xl mx-auto">Aquesta formació no és un curs teòric. És una immersió total en un nou paradigma de treball basat en quatre pilars fonamentals.</p>
-                </div>
-                <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                    <div class="bg-white rounded-2xl shadow-lg p-6 text-center border-t-4 border-[#FF6B6B]">
-                        <div class="text-4xl mb-3">🚀</div>
-                        <h3 class="text-xl font-bold mb-2">Ritme Dinàmic</h3>
-                        <p class="text-gray-600">Activitats ràpides orientades a resultats tangibles i sorprenents.</p>
-                    </div>
-                     <div class="bg-white rounded-2xl shadow-lg p-6 text-center border-t-4 border-[#4ECDC4]">
-                        <div class="text-4xl mb-3">🤯</div>
-                        <h3 class="text-xl font-bold mb-2">Efecte "Wow"</h3>
-                        <p class="text-gray-600">Funcionalitats impactants per captar l'atenció des del primer minut.</p>
-                    </div>
-                     <div class="bg-white rounded-2xl shadow-lg p-6 text-center border-t-4 border-[#45B7D1]">
-                        <div class="text-4xl mb-3">💡</div>
-                        <h3 class="text-xl font-bold mb-2">Aprenentatge Actiu</h3>
-                        <p class="text-gray-600">Sense teoria, tot l'aprenentatge sorgeix de la pràctica directa.</p>
-                    </div>
-                     <div class="bg-white rounded-2xl shadow-lg p-6 text-center border-t-4 border-[#F7B801]">
-                        <div class="text-4xl mb-3">🔗</div>
-                        <h3 class="text-xl font-bold mb-2">Connexió Final</h3>
-                        <p class="text-gray-600">Justificació del projecte un cop s'ha experimentat el seu poder real.</p>
-                    </div>
-                </div>
-            </section>
-
-        </main>
-        
-        <footer class="text-center mt-16 pt-8 border-t border-gray-200">
-            <p class="text-gray-600 font-bold">IMPULSA+45</p>
-            <p class="text-gray-500">Transformant el talent sènior per a l'era digital.</p>
-        </footer>
-
-    </div>
-
-    <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const energeticPlayfulPalette = {
-                red: '#FF6B6B',
-                teal: '#4ECDC4',
-                blue: '#45B7D1',
-                yellow: '#F7B801',
-                lightYellow: '#FAD02C',
-                gray: 'rgba(107, 114, 128, 0.5)'
+            const firebaseConfig = {
+                apiKey: "AIzaSyBsRchId8KlzJfcaKuqeOFWPJcmopCq8V8",
+                authDomain: "informes-psqcat.firebaseapp.com",
+                projectId: "informes-psqcat",
+                storageBucket: "informes-psqcat.appspot.com",
+                messagingSenderId: "864424880028",
+                appId: "1:864424880028:web:2b27a50e28c3d4a1368a59",
+                measurementId: "G-30XQTHJG14"
             };
 
-            const wrapLabel = (str, maxWidth) => {
-                if (str.length <= maxWidth) {
-                    return str;
-                }
-                const words = str.split(' ');
-                let lines = [];
-                let currentLine = words[0];
-                for (let i = 1; i < words.length; i++) {
-                    let word = words[i];
-                    if ((currentLine + " " + word).length > maxWidth) {
-                        lines.push(currentLine);
-                        currentLine = word;
-                    } else {
-                        currentLine += " " + word;
-                    }
-                }
-                lines.push(currentLine);
-                return lines;
+            let db, auth, userId, selectedReport = null, reportsUnsubscribe = null;
+            const charts = {};
+
+            const DOM = {
+                views: document.querySelectorAll('.view'),
+                navLinks: document.querySelectorAll('.nav-link'),
+                dashboardContent: document.getElementById('dashboard-content'),
+                reportsList: document.getElementById('reports-list'),
+                saveReportBtn: document.getElementById('save-report-btn'),
+                reportNameInput: document.getElementById('report-name'),
+                jsonInput: document.getElementById('json-input'),
+                notificationArea: document.getElementById('notification-area'),
+                rawRiskDataInput: document.getElementById('raw-risk-data-input'),
+                rawHealthDataInput: document.getElementById('raw-health-data-input'),
+                translateBtn: document.getElementById('translate-btn'),
+                navToggle: document.getElementById('nav-toggle'),
+                sidebar: document.getElementById('sidebar')
             };
 
-            const multiLineTooltipTitle = {
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            title: function(tooltipItems) {
-                                const item = tooltipItems[0];
-                                let label = item.chart.data.labels[item.dataIndex];
-                                if (Array.isArray(label)) {
-                                    return label.join(' ');
-                                }
-                                return label;
-                            }
-                        }
-                    }
-                }
-            };
+            function switchView(viewId) {
+                DOM.views.forEach(view => view.classList.remove('active'));
+                document.getElementById(`view-${viewId}`).classList.add('active');
+                if (viewId === 'dashboard') renderDashboard();
+            }
+
+            DOM.navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    switchView(e.currentTarget.dataset.view);
+                    if (window.innerWidth < 1024) DOM.sidebar.classList.remove('open');
+                });
+            });
+            DOM.navToggle.addEventListener('click', () => DOM.sidebar.classList.toggle('open'));
+            DOM.translateBtn.addEventListener('click', translatePastedData);
+            DOM.saveReportBtn.addEventListener('click', saveReport);
             
-            const sessionsCtx = document.getElementById('sessionsChart');
-            if(sessionsCtx) {
-                new Chart(sessionsCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Sessió 1: De la Idea a la Comunicació', 'Sessió 2: De la Imatge a l\'Estratègia'],
-                        datasets: [{
-                            label: 'Distribució de les Sessions',
-                            data: [50, 50],
-                            backgroundColor: [energeticPlayfulPalette.teal, energeticPlayfulPalette.blue],
-                            borderColor: '#ffffff',
-                            borderWidth: 4,
-                            hoverOffset: 8
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'bottom',
-                                labels: {
-                                    font: {
-                                        size: 14,
-                                        family: 'Inter'
-                                    },
-                                    padding: 20
-                                }
-                            },
-                             tooltip: multiLineTooltipTitle.plugins.tooltip
-                        },
-                        cutout: '60%'
+            function translatePastedData() {
+                const riskText = DOM.rawRiskDataInput.value;
+                const healthText = DOM.rawHealthDataInput.value;
+                
+                if (!riskText.trim()) {
+                    alert("Si us plau, enganxa el text de la taula de riscos.");
+                    return;
+                }
+                
+                try {
+                    const dimensions = parseDimensions(riskText);
+                    const healthMetrics = parseHealthMetrics(healthText);
+
+                    if (dimensions.length === 0) {
+                        throw new Error("No s'han pogut extreure dimensions de risc. Assegura't de copiar les línies amb el format correcte.");
                     }
-                });
+
+                    const psqcatData = {
+                        metadata: { company: "Informe Traduït", date: new Date().toLocaleDateString(), participants: 100, totalSurveyed: 100 },
+                        dimensions: dimensions,
+                        healthMetrics: healthMetrics,
+                        conclusions: { summary: "Dades generades des de l'assistent." }
+                    };
+                    
+                    DOM.jsonInput.value = JSON.stringify(psqcatData, null, 2);
+                    renderNotification("Dades traduïdes a JSON amb èxit. Ara pots anomenar i guardar l'informe.", 'success');
+                    switchView('data-input');
+                } catch (e) {
+                    renderNotification("Error en traduir les dades: " + e.message, 'error');
+                }
             }
 
-            const session1TimingCtx = document.getElementById('session1TimingChart');
-            if(session1TimingCtx) {
-                 new Chart(session1TimingCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: [
-                            wrapLabel('Benvinguda i Repte Inicial', 16),
-                            wrapLabel('Taller: Estratèga Creatiu Exponencial', 16),
-                            wrapLabel('Pausa i Cafè', 16),
-                            wrapLabel('Taller: El Comunicador Total', 16)
-                        ],
-                        datasets: [{
-                            label: 'Minuts',
-                            data: [20, 70, 15, 75],
-                            backgroundColor: [
-                                energeticPlayfulPalette.red,
-                                energeticPlayfulPalette.teal,
-                                energeticPlayfulPalette.gray,
-                                energeticPlayfulPalette.blue,
-                            ],
-                            borderRadius: 6
-                        }]
-                    },
-                    options: {
-                        indexAxis: 'y',
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: false
-                            },
-                            ...multiLineTooltipTitle.plugins
-                        },
-                        scales: {
-                            x: {
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: 'Durada (minuts)',
-                                    font: { size: 14, weight: '600' }
-                                }
-                            },
-                            y: {
-                                ticks: {
-                                    font: { size: 12 }
-                                }
-                            }
+            function parseDimensions(text) {
+                const dimensions = [];
+                const lines = text.split('\n').filter(line => line.trim() !== '' && !line.toLowerCase().includes('més desfavorable'));
+                
+                lines.forEach(line => {
+                    const parts = line.split('\t');
+                    if (parts.length >= 4) {
+                        let name = parts[0].replace(/\(N=\d+\)/, '').trim();
+                        if (name && isNaN(parseFloat(name))) {
+                            dimensions.push({
+                                name: name,
+                                unfavorable: parseFloat(String(parts[1]).replace(',', '.')),
+                                intermediate: parseFloat(String(parts[2]).replace(',', '.')),
+                                favorable: parseFloat(String(parts[3]).replace(',', '.'))
+                            });
                         }
                     }
                 });
+                return dimensions;
             }
 
-            const session2SkillsCtx = document.getElementById('session2SkillsChart');
-            if(session2SkillsCtx) {
-                new Chart(session2SkillsCtx, {
-                    type: 'radar',
-                    data: {
-                        labels: [
-                            'Creació de Logos', 
-                            'Disseny de Cartells', 
-                            'Anàlisi DAFO', 
-                            'Generació d\'Imatges', 
-                            'Plans d\'Acció'
-                        ],
-                        datasets: [{
-                            label: 'Nivell de Competència Adquirit',
-                            data: [90, 85, 95, 80, 92],
-                            fill: true,
-                            backgroundColor: 'rgba(247, 184, 1, 0.2)',
-                            borderColor: energeticPlayfulPalette.yellow,
-                            pointBackgroundColor: energeticPlayfulPalette.yellow,
-                            pointBorderColor: '#fff',
-                            pointHoverBackgroundColor: '#fff',
-                            pointHoverBorderColor: energeticPlayfulPalette.yellow,
-                            borderWidth: 2
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                             legend: {
-                                position: 'top',
-                            },
-                            ...multiLineTooltipTitle.plugins
-                        },
-                        scales: {
-                            r: {
-                                beginAtZero: true,
-                                max: 100,
-                                angleLines: {
-                                    color: 'rgba(0, 0, 0, 0.1)'
-                                },
-                                grid: {
-                                    color: 'rgba(0, 0, 0, 0.1)'
-                                },
-                                pointLabels: {
-                                    font: {
-                                        size: 13,
-                                        weight: '600'
+            function parseHealthMetrics(text) {
+                const metrics = {
+                    generalHealth: {}, satisfaction: {}, stress: {}, burnout: {}, salutmental: {}
+                };
+                if (!text.trim()) return metrics;
+
+                const metricKeywords = ['Salut general de', 'Salut mental de', 'Estrès de', 'Burnout de', 'Satisfacció de'];
+                
+                metricKeywords.forEach(keyword => {
+                    const key = keyword.replace(' de', '').toLowerCase().replace('è', 'e').replace(' ', '');
+                    const regex = new RegExp(`${keyword}[\\s\\S]*?(?=(${metricKeywords.join('|')})|$)`);
+                    const sectionMatch = text.match(regex);
+                    
+                    if (sectionMatch) {
+                        const sectionText = sectionMatch[0];
+                        const data = {};
+                        ['TOTS', 'DONES', 'HOMES'].forEach(group => {
+                            const groupRegex = new RegExp(`${group}([\\s\\S]*?)(?=(DONES|HOMES|${metricKeywords.join('|')})|$)`);
+                            const groupMatch = sectionText.match(groupRegex);
+                            if (groupMatch) {
+                                const groupData = {};
+                                const ageRanges = ["Menys de 31 anys", "Entre 31 - 45 anys", "Més de 45 anys"];
+                                ageRanges.forEach(age => {
+                                    const ageRegex = new RegExp(`${age}\\s*([\\d,]+)\\s*([\\d,]+)\\s*([\\d,]+)\\s*([\\d,]*)`);
+                                    const ageMatch = groupMatch[1] ? groupMatch[1].match(ageRegex) : null;
+                                    if (ageMatch) {
+                                        const values = ageMatch.slice(1).filter(Boolean).map(v => parseFloat(v.replace(',', '.')));
+                                        let ageKey = '';
+                                        if (age.includes('Menys de 31')) ageKey = 'under31';
+                                        if (age.includes('Entre 31')) ageKey = 'between31_45';
+                                        if (age.includes('Més de 45')) ageKey = 'over45';
+                                        groupData[ageKey] = values;
                                     }
-                                },
-                                ticks: {
-                                    backdropColor: 'rgba(255, 255, 255, 0.75)',
-                                    stepSize: 20
-                                }
+                                });
+                                data[group.toLowerCase()] = groupData;
                             }
-                        }
+                        });
+                        metrics[key] = data;
                     }
+                });
+                return metrics;
+            }
+
+            function renderNotification(message, type = 'success') {
+                const color = type === 'success' ? 'green' : 'red';
+                DOM.notificationArea.innerHTML = `<div class="bg-${color}-100 border border-${color}-400 text-${color}-700 px-4 py-3 rounded-md">${message}</div>`;
+                setTimeout(() => DOM.notificationArea.innerHTML = '', 5000);
+            }
+
+            function renderReportsList(reports) {
+                DOM.reportsList.innerHTML = reports.length === 0 
+                    ? '<p>No has pujat cap informe.</p>'
+                    : reports.map(report => `
+                        <li class="flex items-center justify-between p-3 bg-slate-50 rounded-md">
+                            <span class="font-medium">${report.name}</span>
+                            <div class="flex items-center gap-2">
+                                <button data-report-id="${report.id}" class="view-dashboard-btn text-sm bg-sky-500 text-white py-1 px-3 rounded-md hover:bg-sky-600">Veure</button>
+                                <button data-report-id="${report.id}" class="delete-report-btn text-sm bg-red-500 text-white p-2 rounded-md hover:bg-red-600">X</button>
+                            </div>
+                        </li>`).join('');
+            }
+
+            function renderDashboard() {
+                if (!selectedReport) {
+                    DOM.dashboardContent.innerHTML = `<div class="card text-center"><h2 class="text-2xl font-bold">Benvingut</h2><p class="mt-2">No hi ha cap informe seleccionat. Ves a "Els Meus Informes" per triar-ne un.</p></div>`;
+                    return;
+                }
+                try {
+                    const data = JSON.parse(selectedReport.data);
+                    const problematic = data.dimensions.filter(d => d.unfavorable > 50).sort((a,b) => b.unfavorable - a.unfavorable);
+                    const improvable = data.dimensions.filter(d => d.unfavorable >= 33.3 && d.unfavorable <= 49.9).sort((a,b) => b.unfavorable - a.unfavorable);
+                    const favorable = data.dimensions.filter(d => d.favorable > 33.3).sort((a,b) => b.favorable - a.favorable);
+
+                    DOM.dashboardContent.innerHTML = `
+                        <h2 class="text-3xl font-bold mb-2">Dashboard: <span class="text-fuchsia-600">${selectedReport.name}</span></h2>
+                        <p class="text-slate-500 mb-6">Empresa: ${data.metadata.company} - Data: ${data.metadata.date}</p>
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                            ${createRiskCard("Exposicions Problemàtiques", problematic, 'bg-red-100', 'text-red-700')}
+                            ${createRiskCard("Exposicions Millorables", improvable, 'bg-yellow-100', 'text-yellow-700')}
+                            ${createRiskCard("Exposicions Favorables", favorable, 'bg-green-100', 'text-green-700')}
+                        </div>
+                        <div class="card mb-8">
+                            <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
+                                <h3 class="text-2xl font-bold">Salut i Benestar</h3>
+                                <div class="flex items-center gap-2">
+                                    <label for="age-filter" class="text-sm font-medium">Filtre per Edat:</label>
+                                    <select id="age-filter" class="p-1 border rounded-md text-sm">
+                                        <option value="tots">Tots</option>
+                                        <option value="under31">Menys de 31 anys</option>
+                                        <option value="between31_45">Entre 31 - 45 anys</option>
+                                        <option value="over45">Més de 45 anys</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="health-charts-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                            <div class="card">
+                                <h3 class="text-2xl font-bold mb-4">Model Demanda-Control (Karasek)</h3>
+                                <svg viewBox="0 0 400 300" class="w-full h-auto">${getKarasekModelSVG(data)}</svg>
+                            </div>
+                            <div class="card">
+                                 <h3 class="text-2xl font-bold mb-4">Anàlisi i Recomanacions d'IA</h3>
+                                <div id="conclusions-content" class="text-slate-600 space-y-2 prose">
+                                   <p>Fes clic al botó per generar una anàlisi i recomanacions basades en les dades d'aquest informe.</p>
+                                </div>
+                                <button id="generate-conclusions-btn" class="mt-4 bg-indigo-600 text-white font-bold py-2 px-4 rounded-md hover:bg-indigo-700">
+                                    Generar Anàlisi amb IA
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    renderHealthCharts(data, 'tots');
+                    document.getElementById('age-filter').addEventListener('change', (e) => renderHealthCharts(data, e.target.value));
+                    document.getElementById('generate-conclusions-btn').addEventListener('click', () => generateConclusions(data));
+                } catch (e) {
+                    DOM.dashboardContent.innerHTML = `<div class="card text-red-600">Error en processar les dades de l'informe: ${e.message}</div>`;
+                }
+            }
+            
+            function createRiskCard(title, dimensions, bgColor, textColor) {
+                return `<div class="card"><h4 class="font-bold text-lg mb-3 ${textColor}">${title}</h4><ul class="space-y-2 text-sm">${dimensions.map(d => `<li class="flex justify-between items-center"><span>${d.name}</span><span class="font-semibold ${textColor} ${bgColor} px-2 py-1 rounded-md">${(title === 'Exposicions Favorables' ? d.favorable : d.unfavorable).toFixed(1)}%</span></li>`).join('') || '<li>No hi ha dimensions en aquesta categoria.</li>'}</ul></div>`;
+            }
+
+            function renderHealthCharts(data, ageGroupKey) {
+                const container = document.getElementById('health-charts-container');
+                container.innerHTML = '';
+                Object.values(charts).forEach(chart => chart.destroy());
+                
+                if (!data.healthMetrics) return;
+
+                const metrics = [
+                    { key: 'generalhealth', title: 'Salut General', labels: ['Excel·lent/Bona', 'Bona', 'Regular/Dolenta'] },
+                    { key: 'salutmental', title: 'Salut Mental', labels: ['Superior', 'Mitjà', 'Inferior'] },
+                    { key: 'stress', title: 'Estrès', labels: ['Baix (Verd)', 'Mitjà (Groc)', 'Alt (Vermell)'] },
+                    { key: 'burnout', title: 'Burnout', labels: ['Baix (Verd)', 'Mitjà (Groc)', 'Alt (Vermell)'] },
+                    { key: 'satisfaction', title: 'Satisfacció', labels: ['Molt Satisfet', 'Satisfet', 'Insatisfet', 'Molt Insatisfet'] }
+                ];
+
+                metrics.forEach(metric => {
+                    const metricData = data.healthMetrics[metric.key];
+                    if (!metricData || !metricData.dones || !metricData.homes) return;
+
+                    let donesData = [], homesData = [];
+                    if (ageGroupKey === 'tots') {
+                        const ageKeys = ['under31', 'between31_45', 'over45'];
+                        const numCategories = metric.labels.length;
+                        for(let i=0; i < numCategories; i++) {
+                            let donesSum = 0, donesCount = 0;
+                            let homesSum = 0, homesCount = 0;
+                            ageKeys.forEach(ageKey => {
+                                if (metricData.dones[ageKey] && metricData.dones[ageKey][i] !== undefined) {
+                                    donesSum += metricData.dones[ageKey][i];
+                                    donesCount++;
+                                }
+                                if (metricData.homes[ageKey] && metricData.homes[ageKey][i] !== undefined) {
+                                    homesSum += metricData.homes[ageKey][i];
+                                    homesCount++;
+                                }
+                            });
+                            donesData.push(donesCount > 0 ? donesSum / donesCount : 0);
+                            homesData.push(homesCount > 0 ? homesSum / homesCount : 0);
+                        }
+                    } else {
+                        donesData = metricData.dones[ageGroupKey] || [];
+                        homesData = metricData.homes[ageGroupKey] || [];
+                    }
+
+                    if (donesData.length === 0 && homesData.length === 0) return;
+
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `<h4 class="text-lg font-semibold text-center mb-2">${metric.title}</h4><canvas id="${metric.key}-chart"></canvas>`;
+                    container.appendChild(card);
+
+                    charts[metric.key] = new Chart(document.getElementById(`${metric.key}-chart`).getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: metric.labels,
+                            datasets: [
+                                { label: 'Dones', data: donesData, backgroundColor: 'rgba(219, 39, 119, 0.7)', borderWidth: 1 },
+                                { label: 'Homes', data: homesData, backgroundColor: 'rgba(59, 130, 246, 0.7)', borderWidth: 1 }
+                            ]
+                        },
+                        options: { responsive: true, indexAxis: 'y', plugins: { legend: { position: 'bottom' } }, scales: { x: { suggestedMax: 100, beginAtZero: true } } }
+                    });
+                });
+            }
+            
+            function getKarasekModelSVG(data) {
+                const demandaDims = ["exigències quantitatives", "ritme de treball", "exigències emocionals", "exigències d'amagar emocions"];
+                const controlDims = ["influència", "possibilitats de desenvolupament", "sentit del treball"];
+                
+                const demandaScore = data.dimensions
+                    .filter(d => demandaDims.includes(d.name.toLowerCase()))
+                    .reduce((acc, curr) => acc + curr.unfavorable, 0) / demandaDims.length;
+                
+                const controlScore = data.dimensions
+                    .filter(d => controlDims.includes(d.name.toLowerCase()))
+                    .reduce((acc, curr) => acc + curr.favorable, 0) / controlDims.length;
+
+                let x = 300, y = 80; // Default: Alta Tensión (Alta Demanda, Bajo Control)
+                if (demandaScore < 50 && controlScore >= 50) { x = 100; y = 220; } // Baja Tensión
+                if (demandaScore >= 50 && controlScore >= 50) { x = 100; y = 80; } // Activo
+                if (demandaScore < 50 && controlScore < 50) { x = 300; y = 220; } // Pasivo
+
+                return `<g fill="none" stroke="#334155" stroke-width="1"><path d="M200 0 V300 M0 150 H400"/></g><g text-anchor="middle" font-size="14" font-family="Inter, sans-serif"><text x="100" y="80" fill="#059669">Treball Actiu</text><text x="300" y="220" fill="#dc2626">Treball Passiu</text><text x="300" y="80" fill="#ef4444">Alta Tensió</text><text x="100" y="220" fill="#65a30d">Baixa Tensió</text><text x="200" y="140" font-weight="bold">CONTROL</text><text x="30" y="155" transform="rotate(-90 30 155)" font-weight="bold">DEMANDA</text><g stroke="#c026d3" stroke-width="2" fill="#c026d3" fill-opacity="0.2"><rect x="${x-40}" y="${y-30}" width="80" height="60" rx="10"/><text x="${x}" y="${y+5}" fill="#c026d3" font-size="12" font-weight="bold">Equip</text></g></g>`;
+            }
+            
+            async function generateConclusions(data) {
+                const conclusionsContent = document.getElementById('conclusions-content');
+                conclusionsContent.innerHTML = '<div class="flex items-center gap-2"><div class="loader"></div><span>Generant anàlisi... Si us plau, espera.</span></div>';
+
+                const dimensionsText = data.dimensions.map(d => `- ${d.name}: ${d.unfavorable}% desfavorable`).join('\n');
+                const prompt = `Ets un expert consultor en prevenció de riscos laborals i salut organitzacional, especialitzat en el mètode CoPsoQ PSQCAT i el model Demanda-Control de Karasek. Analitza les següents dades d'un informe per a l'empresa ${data.metadata.company}. Les dades són:\n\n**DADES DE RISCOS PSICOSOCIALS (Percentatge d'exposició desfavorable):**\n${dimensionsText}\n\nBasat en aquest conjunt de dades, redacta una anàlisi professional i accionable en català. L'estructura ha de ser la següent:\n\n**1. Anàlisi segons el Model Demanda-Control (Karasek):**\nIndica a quin quadrant se situa l'equip (ex. "Alta Tensió", "Treball Actiu", etc.) basant-te en les puntuacions d'exigències (demanda) i control (influència, desenvolupament). Explica què implica aquesta situació per a l'equip.\n\n**2. Àrees Crítiques d'Intervenció (Factors de Risc Alts):**\nLlista les dimensions amb els percentatges d'exposició desfavorable més alts (superiors al 50%). Per a cadascuna, explica breument què significa aquest risc a la pràctica.\n\n**3. Punts Forts i Factors Protectors:**\nLlista les dimensions amb millors resultats (més favorables). Explica per què són importants i com es poden fer servir com a palanca per millorar altres àrees.\n\n**4. Pla d'Acció Recomanat:**\nUna secció final amb recomanacions clares i específiques. Indica on ha d'actuar l'empresa. Per a les 2-3 àrees més crítiques, proposa 1-2 accions concretes i pràctiques que la direcció pot implementar.\n\nEl to ha de ser constructiu, professional i orientat a solucions. Formata la resposta usant Markdown amb títols (##) i llistes amb guions (-).`;
+
+                try {
+                    const apiKey = ""; // Canvas will provide the key
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                    const payload = { contents: [{ parts: [{ text: prompt }] }] };
+
+                    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (!response.ok) throw new Error(`Error de l'API: ${response.statusText}`);
+
+                    const result = await response.json();
+                    const analysisText = result.candidates[0].content.parts[0].text;
+                    
+                    conclusionsContent.innerHTML = analysisText
+                        .replace(/## (.*?)\n/g, '<h4 class="font-bold text-lg mt-4 mb-2">$1</h4>')
+                        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                        .replace(/- (.*?)(?=\n- |\n<br>|$)/g, '<li class="ml-4 list-disc">$1</li>')
+                        .replace(/\n/g, '<br>');
+
+                } catch (error) {
+                    conclusionsContent.innerHTML = `<p class="text-red-600">Error en generar l'anàlisi: ${error.message}</p>`;
+                }
+            }
+
+            async function saveReport() {
+                const name = DOM.reportNameInput.value.trim();
+                const json = DOM.jsonInput.value.trim();
+                if (!name) { renderNotification("Introdueix un nom per a l'informe.", 'error'); return; }
+                if (!userId) { renderNotification("No s'ha pogut autenticar.", 'error'); return; }
+                try {
+                    const parsedData = JSON.parse(json);
+                    if (!parsedData.metadata || !parsedData.dimensions) throw new Error("Format JSON invàlid.");
+                    await addDoc(collection(db, `users/${userId}/reports`), { name, data: json, createdAt: new Date() });
+                    renderNotification(`Informe "${name}" guardat.`, 'success');
+                    DOM.reportNameInput.value = '';
+                    DOM.jsonInput.value = '';
+                } catch (e) {
+                    renderNotification(`Error: ${e.message}`, 'error');
+                }
+            }
+
+            async function deleteReport(reportId) {
+                if (!db || !userId) return;
+                if (confirm("Segur que vols eliminar aquest informe?")) {
+                    await deleteDoc(doc(db, `users/${userId}/reports`, reportId));
+                    if (selectedReport && selectedReport.id === reportId) {
+                        selectedReport = null;
+                        renderDashboard();
+                    }
+                }
+            }
+
+            function listenToReports() {
+                if (reportsUnsubscribe) reportsUnsubscribe();
+                const q = query(collection(db, `users/${userId}/reports`), orderBy("createdAt", "desc"));
+                reportsUnsubscribe = onSnapshot(q, (snapshot) => {
+                    const reports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    renderReportsList(reports);
+                    document.querySelectorAll('.view-dashboard-btn').forEach(btn => btn.onclick = (e) => {
+                        selectedReport = reports.find(r => r.id === e.currentTarget.dataset.reportId);
+                        switchView('dashboard');
+                    });
+                    document.querySelectorAll('.delete-report-btn').forEach(btn => btn.onclick = (e) => deleteReport(e.currentTarget.dataset.reportId));
                 });
             }
 
+            function init() {
+                try {
+                    const app = initializeApp(firebaseConfig);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+                    onAuthStateChanged(auth, user => {
+                        if (user) { userId = user.uid; listenToReports(); } 
+                        else { signInAnonymously(auth).catch(e => console.error("Sign-in failed:", e)); }
+                    });
+                    renderDashboard();
+                } catch (error) {
+                    console.error("Firebase init failed:", error);
+                    DOM.dashboardContent.innerHTML = `<div class="card text-red-600">Error d'inicialització.</div>`;
+                }
+            }
+
+            init();
         });
     </script>
 </body>
 </html>
+
