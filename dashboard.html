@@ -1,153 +1,638 @@
 <!DOCTYPE html>
-
 <html lang="es" class="scroll-smooth">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Generador de Dashboards amb Anàlisi de Salut</title>
-  <!-- tailwindcss CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
-    .card { @apply bg-white rounded-xl shadow-md p-6 mb-6; }
-    .view { display: none; }
-    .view.active { display: block; }
-    .loader { @apply border-4 border-gray-200 border-t-4 border-t-fuchsia-600 rounded-full w-6 h-6 animate-spin; }
-    #sidebar { @apply transform transition-transform -translate-x-full lg:translate-x-0; }
-    #sidebar.open { @apply translate-x-0; }
-    .nav-link { @apply w-full text-left px-4 py-2 rounded hover:bg-slate-700 transition-colors; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Dashboards amb Anàlisi de Salut (Versió Millorada)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        .card { background-color: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); padding: 1.5rem; }
+        .view { display: none; }
+        .view.active { display: block; animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #c026d3; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #sidebar { transform: translateX(-100%); transition: transform 0.3s ease-in-out; }
+        #sidebar.open { transform: translateX(0); }
+        @media (min-width: 1024px) { #sidebar { transform: translateX(0); } }
+        .prose h4 { font-size: 1.125rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; }
+        .prose ul { list-style-position: inside; }
+        .prose li { margin-left: 1rem; }
+        /* Custom Modal Styles */
+        .modal-backdrop {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        .modal-backdrop.visible { opacity: 1; pointer-events: auto; }
+        .modal-content {
+            background: white; padding: 2rem; border-radius: 0.75rem;
+            width: 90%; max-width: 500px;
+            transform: scale(0.95); transition: transform 0.3s ease;
+        }
+        .modal-backdrop.visible .modal-content { transform: scale(1); }
+    </style>
 </head>
 <body class="text-slate-700">
-  <!-- Sidebar -->
-  <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-slate-800 text-white p-6 z-40" aria-label="menú">
-    <div class="mb-10 text-center">
-      <h1 class="text-2xl font-bold">CoPsoQ <span class="text-fuchsia-400">psqcat</span></h1>
-      <p class="text-sm text-slate-400">generador d'informes</p>
-    </div>
-    <nav>
-      <ul class="space-y-2">
-        <li><button data-view="dashboard" class="nav-link">dashboard</button></li>
-        <li><button data-view="data-assistant" class="nav-link">assistent de dades</button></li>
-        <li><button data-view="data-input" class="nav-link">guardar informe</button></li>
-        <li><button data-view="reports" class="nav-link">els meus informes</button></li>
-      </ul>
-    </nav>
-  </aside>
-  <!-- Toggle button mobile -->
-  <button id="nav-toggle" class="lg:hidden fixed top-4 left-4 bg-white p-2 rounded shadow z-50" aria-label="menu">
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-    </svg>
-  </button>
-  <!-- Main content -->
-  <main class="lg:ml-64 p-6 md:p-8">
-    <section id="view-dashboard" class="view active"></section>
-    <section id="view-data-assistant" class="view">
-      <div class="card">
-        <h2 class="text-2xl font-bold mb-2">assistent traductor de dades</h2>
-        <p class="mb-4 text-slate-600">enganxa i converteix al format JSON.</p>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-          <textarea id="raw-risk-data" class="w-full h-40 p-2 border rounded" placeholder="dades riscos..."></textarea>
-          <textarea id="raw-health-data" class="w-full h-40 p-2 border rounded" placeholder="dades salut..."></textarea>
+
+    <!-- Sidebar Navigation -->
+    <aside id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-slate-800 text-white p-6 overflow-y-auto z-40">
+        <div class="mb-10 text-center">
+            <h1 class="text-2xl font-bold">CoPsoQ <span class="text-fuchsia-400">psqcat</span></h1>
+            <p class="text-sm text-slate-400">Generador d'Informes</p>
         </div>
-        <button id="translate-btn" class="bg-emerald-600 text-white py-2 px-4 rounded hover:bg-emerald-700">traduir a JSON</button>
-      </div>
-    </section>
-    <section id="view-data-input" class="view">
-      <div class="card">
-        <h2 class="text-2xl font-bold mb-2">guardar informe</h2>
-        <input id="report-name" type="text" class="w-full p-2 mb-4 border rounded" placeholder="nom informe...">
-        <textarea id="json-output" class="w-full h-40 p-2 mb-4 border rounded" readonly placeholder="JSON generat..."></textarea>
-        <button id="save-btn" class="bg-fuchsia-600 text-white py-2 px-4 rounded hover:bg-fuchsia-700">guardar</button>
-        <div id="save-notif" class="mt-4"></div>
-      </div>
-    </section>
-    <section id="view-reports" class="view">
-      <div class="card">
-        <h2 class="text-2xl font-bold mb-4">els meus informes</h2>
-        <ul id="reports-list" class="space-y-2"></ul>
-      </div>
-    </section>
-  </main>
-  <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js';
-    import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js';
-    import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy } from 'https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js';
+        <nav>
+            <ul class="space-y-2" id="nav-links">
+                <li><a href="#dashboard" data-view="dashboard" class="nav-link flex items-center p-2 rounded-md hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3"><path d="M12 20V10M18 20V4M6 20V16"/></svg>Dashboard</a></li>
+                <li><a href="#data-assistant" data-view="data-assistant" class="nav-link flex items-center p-2 rounded-md hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3"><path d="M12 2a10 10 0 00-9.95 9.5c.05.59.41 1.05.95 1.05h18c.54 0 .9-.46.95-1.05A10 10 0 0012 2z"/><path d="M12 12v10M12 2L4.5 4.5M12 2l7.5 2.5"/></svg>Assistent de Dades</a></li>
+                <li><a href="#data-input" data-view="data-input" class="nav-link flex items-center p-2 rounded-md hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Guardar Informe</a></li>
+                <li><a href="#reports" data-view="reports" class="nav-link flex items-center p-2 rounded-md hover:bg-slate-700 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-3"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Els Meus Informes</a></li>
+            </ul>
+        </nav>
+        <div id="auth-status" class="absolute bottom-4 left-4 right-4 text-center text-xs text-slate-500">
+            Connectant...
+        </div>
+    </aside>
 
-```
-// firebase setup
-const config = { apiKey: 'AIzaSyBsRchId8KlzJfcaKuqeOFWPJcmopCq8V8', authDomain: 'informes-psqcat.firebaseapp.com', projectId: 'informes-psqcat' };
-const app = initializeApp(config);
-const auth = getAuth(app);
-const db = getFirestore(app);
+    <!-- Mobile Nav Toggle -->
+    <button id="nav-toggle" class="lg:hidden fixed top-4 left-4 z-50 bg-white p-2 rounded-md shadow-lg">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" /></svg>
+    </button>
 
-// DOM refs
-const views = document.querySelectorAll('.view');
-const links = document.querySelectorAll('.nav-link');
-const toggle = document.getElementById('nav-toggle');
-const sidebar = document.getElementById('sidebar');
-const notif = document.getElementById('save-notif');
+    <!-- Main Content -->
+    <main class="lg:ml-64 p-6 md:p-8">
+        <div id="view-dashboard" class="view active"><div id="dashboard-content"></div></div>
+        <div id="view-data-assistant" class="view"><div class="card"><h2 class="text-2xl font-bold mb-2">Assistent Traductor de Dades</h2><p class="mb-4 text-slate-600">Aquesta eina t'ajuda a convertir les dades del teu informe a un format compatible.</p><div class="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 mb-4" role="alert"><p class="font-bold">Instruccions</p><ol class="list-decimal list-inside mt-2"><li>Obre el teu informe PSQCAT.</li><li>Copia el text de la taula de riscos i la de salut.</li><li>Enganxa cada text al seu quadre corresponent.</li><li>Fes clic a "Traduir a JSON".</li></ol></div><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div class="mb-4"><label for="raw-risk-data-input" class="block text-sm font-medium">1. Enganxa aquí les dades de **Riscos**</label><textarea id="raw-risk-data-input" class="w-full h-64 p-2 border rounded-md" placeholder="Ex: Exigències quantitatives (N=87)	50,5747	34,4828	14,9425"></textarea></div><div class="mb-4"><label for="raw-health-data-input" class="block text-sm font-medium">2. Enganxa aquí les dades de **Salut i Benestar**</label><textarea id="raw-health-data-input" class="w-full h-64 p-2 border rounded-md" placeholder="Ex: Salut general de..."></textarea></div></div><button id="translate-btn" class="bg-emerald-600 text-white font-bold py-2 px-4 rounded-md hover:bg-emerald-700">3. Traduir a JSON</button></div></div>
+        <div id="view-data-input" class="view"><div class="card"><h2 class="text-2xl font-bold mb-4">Guardar Nou Informe</h2><p class="mb-4 text-slate-600">Revisa les dades generades, assigna un nom a l'informe i guarda'l.</p><div class="mb-4"><label for="report-name" class="block text-sm font-medium">1. Nom de l'Informe (Obligatori)</label><input id="report-name" type="text" class="w-full p-2 border border-slate-300 rounded-md" placeholder="Ej: Informe IDIAP 2024"></div><div class="mb-4"><label for="json-input" class="block text-sm font-medium">2. Dades JSON (Generades per l'assistent)</label><textarea id="json-input" class="w-full h-64 p-2 border rounded-md" placeholder="Les dades traduïdes apareixeran aquí..."></textarea></div><div id="notification-area" class="mb-4"></div><button id="save-report-btn" class="bg-fuchsia-600 text-white font-bold py-2 px-4 rounded-md hover:bg-fuchsia-700">3. Guardar Informe</button></div></div>
+        <div id="view-reports" class="view"><div class="card"><h2 class="text-2xl font-bold mb-4">Els Meus Informes</h2><ul id="reports-list" class="space-y-3"></ul></div></div>
+    </main>
 
-let userId = null, unsubscribe = null;
+    <!-- Custom Modal for Confirmations/Alerts -->
+    <div id="custom-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <h3 id="modal-title" class="text-xl font-bold mb-4"></h3>
+            <p id="modal-message" class="text-slate-600 mb-6"></p>
+            <div id="modal-buttons" class="flex justify-end gap-3">
+                <!-- Buttons are added dynamically -->
+            </div>
+        </div>
+    </div>
 
-// view switcher
-function show(view) {
-  views.forEach(v => v.classList.remove('active'));
-  document.getElementById(`view-${view}`).classList.add('active');
-}
-links.forEach(btn => btn.addEventListener('click', () => { show(btn.dataset.view); sidebar.classList.remove('open'); }));
-toggle.addEventListener('click', () => sidebar.classList.toggle('open'));
+    <script type="module">
+        // Import Firebase modules from the latest SDK version
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-// auth
-onAuthStateChanged(auth, user => {
-  if (user) { userId = user.uid; loadReports(); } else { signInAnonymously(auth); }
-});
+        // --- App State ---
+        let db, auth, userId, selectedReport = null, reportsUnsubscribe = null;
+        const charts = {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-// translation
-document.getElementById('translate-btn').onclick = () => {
-  const risk = document.getElementById('raw-risk-data').value.split('\n').map(l => l.split('\t'));
-  const health = document.getElementById('raw-health-data').value;
-  const dims = risk.map(p => ({ name: p[0]?.replace(/\(N=\d+\)/,''), unfavorable: parseFloat(p[1]), intermediate: parseFloat(p[2]), favorable: parseFloat(p[3]) }));
-  const data = { metadata: { company: 'PSQCAT', date: new Date().toLocaleDateString() }, dimensions: dims, healthMetrics: {} };
-  document.getElementById('json-output').value = JSON.stringify(data, null, 2);
-  show('data-input');
-};
+        // --- DOM Elements Cache ---
+        const DOM = {
+            views: document.querySelectorAll('.view'),
+            navLinks: document.querySelectorAll('.nav-link'),
+            dashboardContent: document.getElementById('dashboard-content'),
+            reportsList: document.getElementById('reports-list'),
+            saveReportBtn: document.getElementById('save-report-btn'),
+            reportNameInput: document.getElementById('report-name'),
+            jsonInput: document.getElementById('json-input'),
+            notificationArea: document.getElementById('notification-area'),
+            rawRiskDataInput: document.getElementById('raw-risk-data-input'),
+            rawHealthDataInput: document.getElementById('raw-health-data-input'),
+            translateBtn: document.getElementById('translate-btn'),
+            navToggle: document.getElementById('nav-toggle'),
+            sidebar: document.getElementById('sidebar'),
+            authStatus: document.getElementById('auth-status'),
+            modal: {
+                backdrop: document.getElementById('custom-modal'),
+                title: document.getElementById('modal-title'),
+                message: document.getElementById('modal-message'),
+                buttons: document.getElementById('modal-buttons'),
+            }
+        };
 
-// save
-document.getElementById('save-btn').onclick = async () => {
-  const name = document.getElementById('report-name').value;
-  const json = document.getElementById('json-output').value;
-  if (!name) return notif.innerHTML = '<p class="text-red-600">Introdueix un nom</p>';
-  try { await addDoc(collection(db, `users/${userId}/reports`), { name, data: json, createdAt: new Date() }); notif.innerHTML = '<p class="text-green-600">Guardat!</p>'; } 
-  catch(e){ notif.innerHTML = `<p class="text-red-600">Error: ${e.message}</p>`; }
-};
+        // --- Modal Module ---
+        const Modal = {
+            show(title, message, buttons) {
+                DOM.modal.title.textContent = title;
+                DOM.modal.message.textContent = message;
+                DOM.modal.buttons.innerHTML = '';
+                buttons.forEach(btn => {
+                    const buttonEl = document.createElement('button');
+                    buttonEl.textContent = btn.text;
+                    buttonEl.className = btn.class;
+                    buttonEl.onclick = () => {
+                        this.hide();
+                        if (btn.action) btn.action();
+                    };
+                    DOM.modal.buttons.appendChild(buttonEl);
+                });
+                DOM.modal.backdrop.classList.add('visible');
+            },
+            hide() {
+                DOM.modal.backdrop.classList.remove('visible');
+            },
+            confirm(title, message, onConfirm) {
+                this.show(title, message, [
+                    { text: 'Cancel·lar', class: 'py-2 px-4 rounded-md hover:bg-slate-100' },
+                    { text: 'Confirmar', class: 'py-2 px-4 rounded-md bg-red-600 text-white hover:bg-red-700', action: onConfirm }
+                ]);
+            },
+            alert(title, message) {
+                 this.show(title, message, [
+                    { text: 'D\'acord', class: 'py-2 px-4 rounded-md bg-blue-600 text-white hover:bg-blue-700' }
+                ]);
+            }
+        };
+        
+        // --- UI Logic ---
+        function switchView(viewId) {
+            DOM.views.forEach(view => view.classList.remove('active'));
+            const activeView = document.getElementById(`view-${viewId}`);
+            if (activeView) activeView.classList.add('active');
+            if (viewId === 'dashboard') renderDashboard();
+        }
 
-// load & render reports
-function loadReports() {
-  if (unsubscribe) unsubscribe();
-  const q = query(collection(db, `users/${userId}/reports`), orderBy('createdAt','desc'));
-  unsubscribe = onSnapshot(q, snap => {
-    const ul = document.getElementById('reports-list'); ul.innerHTML = '';
-    snap.docs.forEach(docSnap => {
-      const r = docSnap.data(); const li = document.createElement('li'); li.className = 'flex justify-between';
-      li.innerHTML = `<span>${r.name}</span><div><button class="mr-2" onclick="view('${docSnap.id}', '${r.name}')">veure</button><button onclick="del('${docSnap.id}')">x</button></div>`;
-      ul.appendChild(li);
-    });
-  });
-}
-window.view = (id,name) => {
-  show('dashboard'); document.getElementById('view-dashboard').innerHTML = `<div class="card"><h2 class="font-bold text-xl mb-2">dashboard: ${name}</h2></div>`;
-};
-window.del = id => deleteDoc(doc(db, `users/${userId}/reports`, id));
-```
+        function renderNotification(message, type = 'success') {
+            const color = type === 'success' ? 'green' : 'red';
+            DOM.notificationArea.innerHTML = `<div class="bg-${color}-100 border border-${color}-400 text-${color}-700 px-4 py-3 rounded-md transition-opacity duration-300">${message}</div>`;
+            setTimeout(() => {
+                const notification = DOM.notificationArea.firstChild;
+                if (notification) {
+                    notification.style.opacity = '0';
+                    setTimeout(() => notification.remove(), 300);
+                }
+            }, 5000);
+        }
 
-  </script>
+        // --- Firebase Initialization and Auth ---
+        async function initFirebase() {
+            try {
+                // IMPORTANT: Use environment variables for Firebase config.
+                // This is more secure than hardcoding keys in the source code.
+                if (typeof __firebase_config === 'undefined') {
+                    throw new Error("La configuració de Firebase no està disponible.");
+                }
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                setLogLevel('debug'); // Enable for debugging, can be 'silent' in production
+
+                // Handle authentication state changes
+                onAuthStateChanged(auth, user => {
+                    if (user) {
+                        userId = user.uid;
+                        console.log("Usuari autenticat:", userId);
+                        DOM.authStatus.textContent = `Connectat`;
+                        DOM.authStatus.title = `ID d'Usuari: ${userId}`;
+                        listenToReports();
+                    } else {
+                        userId = null;
+                        DOM.authStatus.textContent = "Desconnectat";
+                        console.log("Cap usuari autenticat. Intentant iniciar sessió anònimament.");
+                    }
+                });
+                
+                // Sign in using the provided token or fall back to anonymous sign-in
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                renderDashboard(); // Initial render
+            } catch (error) {
+                console.error("Error en la inicialització de Firebase:", error);
+                DOM.dashboardContent.innerHTML = `<div class="card text-red-600">Error crític en la inicialització. L'aplicació no pot funcionar. Revisa la consola per a més detalls.</div>`;
+                DOM.authStatus.textContent = "Error de connexió";
+            }
+        }
+
+        // --- Data Translation Logic ---
+        function translatePastedData() {
+            const riskText = DOM.rawRiskDataInput.value;
+            const healthText = DOM.rawHealthDataInput.value;
+            
+            if (!riskText.trim()) {
+                Modal.alert("Dades Incomplertes", "Si us plau, enganxa el text de la taula de riscos.");
+                return;
+            }
+            
+            try {
+                const dimensions = parseDimensions(riskText);
+                const healthMetrics = parseHealthMetrics(healthText);
+
+                if (dimensions.length === 0) {
+                    throw new Error("No s'han pogut extreure dimensions de risc. Assegura't que el format del text copiat és el correcte.");
+                }
+
+                const psqcatData = {
+                    metadata: { company: "Informe Traduït", date: new Date().toLocaleDateString(), participants: 100, totalSurveyed: 100 },
+                    dimensions: dimensions,
+                    healthMetrics: healthMetrics,
+                    conclusions: { summary: "Dades generades des de l'assistent." }
+                };
+                
+                DOM.jsonInput.value = JSON.stringify(psqcatData, null, 2);
+                renderNotification("Dades traduïdes a JSON amb èxit. Ara pots anomenar i guardar l'informe.", 'success');
+                switchView('data-input');
+            } catch (e) {
+                console.error("Error en traduir:", e);
+                renderNotification("Error en traduir les dades: " + e.message, 'error');
+            }
+        }
+
+        function parseDimensions(text) {
+            const dimensions = [];
+            const lines = text.split('\n').filter(line => line.trim() !== '' && !line.toLowerCase().includes('més desfavorable'));
+            
+            lines.forEach(line => {
+                const parts = line.split('\t');
+                if (parts.length >= 4) {
+                    let name = parts[0].replace(/\(N=\d+\)/, '').trim();
+                    if (name && isNaN(parseFloat(name))) {
+                        dimensions.push({
+                            name: name,
+                            unfavorable: parseFloat(String(parts[1]).replace(',', '.')),
+                            intermediate: parseFloat(String(parts[2]).replace(',', '.')),
+                            favorable: parseFloat(String(parts[3]).replace(',', '.'))
+                        });
+                    }
+                }
+            });
+            return dimensions;
+        }
+        
+        // The parseHealthMetrics function remains largely the same as it's specific to the data format.
+        // No major improvements needed besides ensuring it's robust.
+        function parseHealthMetrics(text) {
+             const metrics = {
+                 generalHealth: {}, satisfaction: {}, stress: {}, burnout: {}, salutmental: {}
+             };
+             if (!text.trim()) return metrics;
+
+             const metricKeywords = ['Salut general de', 'Salut mental de', 'Estrès de', 'Burnout de', 'Satisfacció de'];
+             
+             metricKeywords.forEach(keyword => {
+                 const key = keyword.replace(' de', '').toLowerCase().replace('è', 'e').replace(' ', '');
+                 const regex = new RegExp(`${keyword}[\\s\\S]*?(?=(${metricKeywords.join('|')})|$)`);
+                 const sectionMatch = text.match(regex);
+                 
+                 if (sectionMatch) {
+                     const sectionText = sectionMatch[0];
+                     const data = {};
+                     ['TOTS', 'DONES', 'HOMES'].forEach(group => {
+                         const groupRegex = new RegExp(`${group}([\\s\\S]*?)(?=(DONES|HOMES|${metricKeywords.join('|')})|$)`);
+                         const groupMatch = sectionText.match(groupRegex);
+                         if (groupMatch) {
+                             const groupData = {};
+                             const ageRanges = ["Menys de 31 anys", "Entre 31 - 45 anys", "Més de 45 anys"];
+                             ageRanges.forEach(age => {
+                                 const ageRegex = new RegExp(`${age}\\s*([\\d,]+)\\s*([\\d,]+)\\s*([\\d,]+)\\s*([\\d,]*)`);
+                                 const ageMatch = groupMatch[1] ? groupMatch[1].match(ageRegex) : null;
+                                 if (ageMatch) {
+                                     const values = ageMatch.slice(1).filter(Boolean).map(v => parseFloat(v.replace(',', '.')));
+                                     let ageKey = '';
+                                     if (age.includes('Menys de 31')) ageKey = 'under31';
+                                     if (age.includes('Entre 31')) ageKey = 'between31_45';
+                                     if (age.includes('Més de 45')) ageKey = 'over45';
+                                     groupData[ageKey] = values;
+                                 }
+                             });
+                             data[group.toLowerCase()] = groupData;
+                         }
+                     });
+                     metrics[key] = data;
+                 }
+             });
+             return metrics;
+        }
+
+        // --- Firestore Data Management ---
+        async function saveReport() {
+            const name = DOM.reportNameInput.value.trim();
+            const json = DOM.jsonInput.value.trim();
+            if (!name) { renderNotification("Introdueix un nom per a l'informe.", 'error'); return; }
+            if (!userId) { renderNotification("Error d'autenticació. No es pot guardar l'informe.", 'error'); return; }
+            
+            try {
+                const parsedData = JSON.parse(json);
+                if (!parsedData.metadata || !parsedData.dimensions) throw new Error("Format JSON invàlid.");
+                
+                // Path uses appId for multi-tenancy and userId for security
+                const reportsCollectionPath = `artifacts/${appId}/users/${userId}/reports`;
+                await addDoc(collection(db, reportsCollectionPath), { 
+                    name, 
+                    data: json, 
+                    createdAt: new Date() 
+                });
+                
+                renderNotification(`Informe "${name}" guardat correctament.`, 'success');
+                DOM.reportNameInput.value = '';
+                DOM.jsonInput.value = '';
+                switchView('reports'); // Switch to reports view after saving
+            } catch (e) {
+                console.error("Error al guardar l'informe:", e);
+                renderNotification(`Error en guardar l'informe: ${e.message}`, 'error');
+            }
+        }
+
+        async function deleteReport(reportId, reportName) {
+            if (!db || !userId) return;
+            
+            Modal.confirm("Eliminar Informe", `Estàs segur que vols eliminar l'informe "${reportName}"? Aquesta acció no es pot desfer.`, async () => {
+                try {
+                    const reportDocPath = `artifacts/${appId}/users/${userId}/reports/${reportId}`;
+                    await deleteDoc(doc(db, reportDocPath));
+                    
+                    if (selectedReport && selectedReport.id === reportId) {
+                        selectedReport = null;
+                        renderDashboard();
+                    }
+                    renderNotification(`Informe "${reportName}" eliminat.`, 'success');
+                } catch (error) {
+                    console.error("Error en eliminar l'informe:", error);
+                    renderNotification("No s'ha pogut eliminar l'informe.", "error");
+                }
+            });
+        }
+
+        function listenToReports() {
+            if (reportsUnsubscribe) reportsUnsubscribe(); // Unsubscribe from previous listener
+            if (!userId) return;
+
+            const reportsCollectionPath = `artifacts/${appId}/users/${userId}/reports`;
+            const q = query(collection(db, reportsCollectionPath), orderBy("createdAt", "desc"));
+            
+            reportsUnsubscribe = onSnapshot(q, (snapshot) => {
+                const reports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderReportsList(reports);
+            }, (error) => {
+                console.error("Error en escoltar els informes:", error);
+                DOM.reportsList.innerHTML = `<p class="text-red-500">No s'han pogut carregar els informes.</p>`;
+            });
+        }
+
+        // --- Rendering Logic ---
+        function renderReportsList(reports) {
+            DOM.reportsList.innerHTML = reports.length === 0 
+                ? '<li><p class="text-slate-500">No has guardat cap informe encara. Utilitza l\'assistent de dades per començar.</p></li>'
+                : reports.map(report => `
+                    <li class="flex items-center justify-between p-3 bg-slate-50 rounded-md hover:bg-slate-100 transition-colors">
+                        <span class="font-medium">${report.name}</span>
+                        <div class="flex items-center gap-2">
+                            <button data-report-id="${report.id}" class="view-dashboard-btn text-sm bg-sky-500 text-white py-1 px-3 rounded-md hover:bg-sky-600">Veure</button>
+                            <button data-report-id="${report.id}" data-report-name="${report.name}" class="delete-report-btn text-sm bg-red-500 text-white p-2 rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>
+                        </div>
+                    </li>`).join('');
+
+            // Re-attach event listeners after rendering
+            document.querySelectorAll('.view-dashboard-btn').forEach(btn => btn.onclick = (e) => {
+                selectedReport = reports.find(r => r.id === e.currentTarget.dataset.reportId);
+                switchView('dashboard');
+            });
+            document.querySelectorAll('.delete-report-btn').forEach(btn => btn.onclick = (e) => {
+                const { reportId, reportName } = e.currentTarget.dataset;
+                deleteReport(reportId, reportName);
+            });
+        }
+
+        function renderDashboard() {
+            if (!selectedReport) {
+                DOM.dashboardContent.innerHTML = `<div class="card text-center"><h2 class="text-2xl font-bold">Benvingut al Generador d'Informes</h2><p class="mt-2 text-slate-600">No hi ha cap informe seleccionat. Ves a <a href="#" class="text-fuchsia-600 font-semibold" onclick="document.querySelector('[data-view=reports]').click()">"Els Meus Informes"</a> per triar-ne un o crea'n un de nou amb l'<a href="#" class="text-fuchsia-600 font-semibold" onclick="document.querySelector('[data-view=data-assistant]').click()">Assistent de Dades</a>.</p></div>`;
+                return;
+            }
+            try {
+                const data = JSON.parse(selectedReport.data);
+                const problematic = data.dimensions.filter(d => d.unfavorable > 50).sort((a,b) => b.unfavorable - a.unfavorable);
+                const improvable = data.dimensions.filter(d => d.unfavorable >= 33.3 && d.unfavorable <= 49.9).sort((a,b) => b.unfavorable - a.unfavorable);
+                const favorable = data.dimensions.filter(d => d.favorable > 33.3).sort((a,b) => b.favorable - a.favorable);
+
+                DOM.dashboardContent.innerHTML = `
+                    <h2 class="text-3xl font-bold mb-2">Dashboard: <span class="text-fuchsia-600">${selectedReport.name}</span></h2>
+                    <p class="text-slate-500 mb-6">Empresa: ${data.metadata.company} - Data: ${data.metadata.date}</p>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                        ${createRiskCard("Exposicions Problemàtiques", problematic, 'bg-red-100', 'text-red-700')}
+                        ${createRiskCard("Exposicions Millorables", improvable, 'bg-yellow-100', 'text-yellow-700')}
+                        ${createRiskCard("Exposicions Favorables", favorable, 'bg-green-100', 'text-green-700')}
+                    </div>
+                    <div class="card mb-8">
+                        <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
+                            <h3 class="text-2xl font-bold">Salut i Benestar</h3>
+                            <div class="flex items-center gap-2">
+                                <label for="age-filter" class="text-sm font-medium">Filtre per Edat:</label>
+                                <select id="age-filter" class="p-1 border rounded-md text-sm">
+                                    <option value="tots">Tots</option>
+                                    <option value="under31">Menys de 31 anys</option>
+                                    <option value="between31_45">Entre 31 - 45 anys</option>
+                                    <option value="over45">Més de 45 anys</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="health-charts-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                        <div class="card">
+                            <h3 class="text-2xl font-bold mb-4">Model Demanda-Control (Karasek)</h3>
+                            <svg viewBox="0 0 400 300" class="w-full h-auto">${getKarasekModelSVG(data)}</svg>
+                        </div>
+                        <div class="card">
+                            <h3 class="text-2xl font-bold mb-4">Anàlisi i Recomanacions d'IA</h3>
+                            <div id="conclusions-content" class="text-slate-600 space-y-2 prose max-w-none">
+                                <p>Fes clic al botó per generar una anàlisi i recomanacions basades en les dades d'aquest informe.</p>
+                            </div>
+                            <button id="generate-conclusions-btn" class="mt-4 bg-indigo-600 text-white font-bold py-2 px-4 rounded-md hover:bg-indigo-700 flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.06 2.24a2.5 2.5 0 0 1 4.88 0l1.69 3.42a.5.5 0 0 0 .47.29h3.6a2.5 2.5 0 0 1 1.63 4.27l-2.92 2.13a.5.5 0 0 0-.18.53l1.1 3.58a2.5 2.5 0 0 1-3.82 2.8L12 16.22a.5.5 0 0 0-.58 0l-3.18 2.3a2.5 2.5 0 0 1-3.82-2.8l1.1-3.58a.5.5 0 0 0-.18-.53l-2.92-2.13A2.5 2.5 0 0 1 3.7 9.35h3.6a.5.5 0 0 0 .47-.3z"/></svg>
+                                Generar Anàlisi amb IA
+                            </button>
+                        </div>
+                    </div>
+                `;
+                renderHealthCharts(data, 'tots');
+                document.getElementById('age-filter').addEventListener('change', (e) => renderHealthCharts(data, e.target.value));
+                document.getElementById('generate-conclusions-btn').addEventListener('click', () => generateConclusions(data));
+            } catch (e) {
+                console.error("Error al renderitzar el dashboard:", e);
+                DOM.dashboardContent.innerHTML = `<div class="card text-red-600">Error en processar les dades de l'informe: ${e.message}. El format JSON podria ser invàlid.</div>`;
+            }
+        }
+        
+        function createRiskCard(title, dimensions, bgColor, textColor) {
+            return `<div class="card"><h4 class="font-bold text-lg mb-3 ${textColor}">${title}</h4><ul class="space-y-2 text-sm">${dimensions.map(d => `<li class="flex justify-between items-center"><span>${d.name}</span><span class="font-semibold ${textColor} ${bgColor} px-2 py-1 rounded-md">${(title === 'Exposicions Favorables' ? d.favorable : d.unfavorable).toFixed(1)}%</span></li>`).join('') || '<li>No hi ha dimensions en aquesta categoria.</li>'}</ul></div>`;
+        }
+
+        function renderHealthCharts(data, ageGroupKey) {
+            const container = document.getElementById('health-charts-container');
+            if (!container) return;
+            container.innerHTML = '';
+            Object.values(charts).forEach(chart => chart.destroy());
+            
+            if (!data.healthMetrics) return;
+
+            const metrics = [
+                { key: 'generalhealth', title: 'Salut General', labels: ['Excel·lent/Bona', 'Bona', 'Regular/Dolenta'] },
+                { key: 'salutmental', title: 'Salut Mental', labels: ['Superior', 'Mitjà', 'Inferior'] },
+                { key: 'stress', title: 'Estrès', labels: ['Baix (Verd)', 'Mitjà (Groc)', 'Alt (Vermell)'] },
+                { key: 'burnout', title: 'Burnout', labels: ['Baix (Verd)', 'Mitjà (Groc)', 'Alt (Vermell)'] },
+                { key: 'satisfaction', title: 'Satisfacció', labels: ['Molt Satisfet', 'Satisfet', 'Insatisfet', 'Molt Insatisfet'] }
+            ];
+
+            metrics.forEach(metric => {
+                const metricData = data.healthMetrics[metric.key];
+                if (!metricData || !metricData.dones || !metricData.homes) return;
+
+                let donesData = [], homesData = [];
+                if (ageGroupKey === 'tots') {
+                    const ageKeys = ['under31', 'between31_45', 'over45'];
+                    const numCategories = metric.labels.length;
+                    for(let i=0; i < numCategories; i++) {
+                        let donesSum = 0, donesCount = 0;
+                        let homesSum = 0, homesCount = 0;
+                        ageKeys.forEach(ageKey => {
+                            if (metricData.dones[ageKey] && metricData.dones[ageKey][i] !== undefined) {
+                                donesSum += metricData.dones[ageKey][i];
+                                donesCount++;
+                            }
+                            if (metricData.homes[ageKey] && metricData.homes[ageKey][i] !== undefined) {
+                                homesSum += metricData.homes[ageKey][i];
+                                homesCount++;
+                            }
+                        });
+                        donesData.push(donesCount > 0 ? donesSum / donesCount : 0);
+                        homesData.push(homesCount > 0 ? homesSum / homesCount : 0);
+                    }
+                } else {
+                    donesData = metricData.dones[ageGroupKey] || [];
+                    homesData = metricData.homes[ageGroupKey] || [];
+                }
+
+                if (donesData.length === 0 && homesData.length === 0) return;
+
+                const card = document.createElement('div');
+                card.innerHTML = `<h4 class="text-lg font-semibold text-center mb-2">${metric.title}</h4><canvas id="${metric.key}-chart"></canvas>`;
+                container.appendChild(card);
+
+                charts[metric.key] = new Chart(document.getElementById(`${metric.key}-chart`).getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: metric.labels,
+                        datasets: [
+                            { label: 'Dones', data: donesData, backgroundColor: 'rgba(219, 39, 119, 0.7)', borderWidth: 1 },
+                            { label: 'Homes', data: homesData, backgroundColor: 'rgba(59, 130, 246, 0.7)', borderWidth: 1 }
+                        ]
+                    },
+                    options: { responsive: true, indexAxis: 'y', plugins: { legend: { position: 'bottom' } }, scales: { x: { suggestedMax: 100, beginAtZero: true } } }
+                });
+            });
+        }
+        
+        function getKarasekModelSVG(data) {
+            const demandaDims = ["exigències quantitatives", "ritme de treball", "exigències emocionals", "exigències d'amagar emocions"];
+            const controlDims = ["influència", "possibilitats de desenvolupament", "sentit del treball"];
+            
+            const getAverage = (names, property) => {
+                const filtered = data.dimensions.filter(d => names.includes(d.name.toLowerCase()));
+                if (filtered.length === 0) return 0;
+                const sum = filtered.reduce((acc, curr) => acc + (curr[property] || 0), 0);
+                return sum / filtered.length;
+            };
+
+            const demandaScore = getAverage(demandaDims, 'unfavorable');
+            const controlScore = getAverage(controlDims, 'favorable');
+
+            // x: 100 is low demand, 300 is high demand
+            // y: 80 is high control, 220 is low control
+            const pointX = 50 + (demandaScore * 3); // Scale 0-100 to 50-350
+            const pointY = 280 - (controlScore * 2.6); // Scale 0-100 to 280-20 (inverted Y)
+
+            return `<g fill="none" stroke="#64748b" stroke-width="1" stroke-dasharray="4">
+                        <path d="M200 0 V300 M0 150 H400"/>
+                    </g>
+                    <g text-anchor="middle" font-size="14" font-family="Inter, sans-serif" fill="#334155">
+                        <text x="100" y="40" fill="#059669" font-weight="600">Treball Actiu</text>
+                        <text x="300" y="260" fill="#9ca3af">Treball Passiu</text>
+                        <text x="300" y="40" fill="#dc2626" font-weight="600">Alta Tensió</text>
+                        <text x="100" y="260" fill="#65a30d">Baixa Tensió</text>
+                        <text x="360" y="140" font-weight="bold" font-size="12">ALTA</text>
+                        <text x="40" y="140" font-weight="bold" font-size="12">BAIXA</text>
+                        <text x="200" y="15" font-weight="bold" font-size="12">ALT</text>
+                        <text x="200" y="295" font-weight="bold" font-size="12">BAIX</text>
+                        <text x="200" y="135" font-weight="bold">CONTROL</text>
+                        <text x="20" y="170" transform="rotate(-90 20 170)" font-weight="bold">DEMANDA</text>
+                    </g>
+                    <g transform="translate(${pointX}, ${pointY})">
+                        <circle r="12" fill="#c026d3" fill-opacity="0.3" />
+                        <circle r="6" fill="#c026d3" />
+                        <text y="-18" text-anchor="middle" font-weight="bold" fill="#c026d3">Equip</text>
+                    </g>`;
+        }
+        
+        async function generateConclusions(data) {
+            const btn = document.getElementById('generate-conclusions-btn');
+            const conclusionsContent = document.getElementById('conclusions-content');
+            btn.disabled = true;
+            conclusionsContent.innerHTML = '<div class="flex items-center gap-2"><div class="loader"></div><span>Generant anàlisi... Això pot trigar uns segons.</span></div>';
+
+            const dimensionsText = data.dimensions.map(d => `- ${d.name}: ${d.unfavorable.toFixed(1)}% desfavorable, ${d.favorable.toFixed(1)}% favorable`).join('\n');
+            const prompt = `Ets un expert consultor en prevenció de riscos laborals i salut organitzacional, especialitzat en el mètode CoPsoQ PSQCAT i el model Demanda-Control de Karasek. Analitza les següents dades d'un informe per a l'empresa ${data.metadata.company}. Les dades són:\n\n**DADES DE RISCOS PSICOSOCIALS:**\n${dimensionsText}\n\nBasat en aquest conjunt de dades, redacta una anàlisi professional i accionable en català. L'estructura ha de ser la següent:\n\n**1. Diagnòstic General (Model Demanda-Control):**\nIndica a quin quadrant se situa l'equip (ex. "Alta Tensió", "Treball Actiu", etc.) basant-te en les puntuacions mitjanes d'exigències (demanda) i control (influència, desenvolupament, sentit). Explica breument què implica aquesta situació per a l'equip en termes de salut i motivació.\n\n**2. Àrees Crítiques d'Intervenció (Factors de Risc Alts):**\nLlista les 3-4 dimensions amb els percentatges d'exposició desfavorable més alts. Per a cadascuna, explica què significa aquest risc a la pràctica i per què és prioritari actuar.\n\n**3. Punts Forts i Factors Protectors:**\nLlista les 3-4 dimensions amb els resultats més favorables. Explica per què són importants i com l'empresa pot aprofitar-los com a palanca per millorar altres àrees.\n\n**4. Pla d'Acció Recomanat:**\nProposa una secció final amb recomanacions clares i específiques. Per a les 2 àrees més crítiques identificades, proposa 2 accions concretes i pràctiques que la direcció o els comandaments intermedis poden implementar a curt termini.\n\nEl to ha de ser constructiu, professional i orientat a solucions. Formata la resposta usant Markdown amb títols (####) i llistes amb guions (-).`;
+
+            try {
+                // IMPORTANT: The API key is left empty. The Canvas environment will securely provide it.
+                const apiKey = ""; 
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                const payload = { contents: [{ parts: [{ text: prompt }] }] };
+
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) throw new Error(`Error de l'API: ${response.statusText}`);
+
+                const result = await response.json();
+                const analysisText = result.candidates[0].content.parts[0].text;
+                
+                // Simple Markdown to HTML conversion
+                conclusionsContent.innerHTML = analysisText
+                    .replace(/#### (.*?)\n/g, '<h4 class="font-bold text-lg mt-4 mb-2">$1</h4>')
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/^- (.*?)$/gm, '<li class="ml-4 list-disc">$1</li>')
+                    .replace(/\n/g, '<br>');
+
+            } catch (error) {
+                conclusionsContent.innerHTML = `<p class="text-red-600">Error en generar l'anàlisi: ${error.message}</p>`;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+        
+        // --- Event Listeners Setup ---
+        function initEventListeners() {
+            DOM.navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    switchView(e.currentTarget.dataset.view);
+                    if (window.innerWidth < 1024) DOM.sidebar.classList.remove('open');
+                });
+            });
+            DOM.navToggle.addEventListener('click', () => DOM.sidebar.classList.toggle('open'));
+            DOM.translateBtn.addEventListener('click', translatePastedData);
+            DOM.saveReportBtn.addEventListener('click', saveReport);
+        }
+
+        // --- App Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initEventListeners();
+            initFirebase();
+        });
+    </script>
 </body>
 </html>
+
